@@ -236,6 +236,19 @@ export class NetworkManager {
   }
 
   /**
+   * Host sends message to a specific connected client.
+   */
+  sendToClient(clientId, type, payload = {}) {
+    if (this.role !== 'HOST') return false;
+    const client = this.clients.get(clientId);
+    if (client && client.conn && client.conn.open) {
+      client.conn.send({ type, payload });
+      return true;
+    }
+    return false;
+  }
+
+  /**
    * Client sends message to Host.
    */
   sendToHost(type, payload = {}) {

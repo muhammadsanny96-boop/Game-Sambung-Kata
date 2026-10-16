@@ -7,6 +7,10 @@ export class WordValidator {
   constructor() {
     this.wordsSet = new Set();
     this.wordsMetadata = new Map(); // word -> { category }
+    this.wordsByInitial = {};
+    for (let i = 97; i <= 122; i++) {
+      this.wordsByInitial[String.fromCharCode(i)] = [];
+    }
     this.isLoaded = false;
   }
 
@@ -46,6 +50,10 @@ export class WordValidator {
   populate(data) {
     this.wordsSet.clear();
     this.wordsMetadata.clear();
+    this.wordsByInitial = {};
+    for (let i = 97; i <= 122; i++) {
+      this.wordsByInitial[String.fromCharCode(i)] = [];
+    }
 
     const wordsList = Array.isArray(data) ? data : (data.words || []);
     const catMap = (typeof data === 'object' && !Array.isArray(data) && data.categories) ? data.categories : {};
@@ -56,6 +64,11 @@ export class WordValidator {
       const norm = this.normalize(w);
       if (norm) {
         this.wordsSet.add(norm);
+
+        const initChar = norm[0];
+        if (this.wordsByInitial[initChar]) {
+          this.wordsByInitial[initChar].push(norm);
+        }
 
         // Memory optimization: only allocate metadata for words with specific categories
         let cat = null;
@@ -113,7 +126,7 @@ export class WordValidator {
     if (req && !normalized.startsWith(req)) {
       return {
         valid: false,
-        reason: `Kata harus diawali huruf '${req.toUpperCase()}'!`,
+        reason: `Kata '${normalized.toUpperCase()}' diawali huruf '${normalized[0].toUpperCase()}', padahal giliran ini wajib huruf '${req.toUpperCase()}'!`,
         normalized
       };
     }
@@ -122,7 +135,7 @@ export class WordValidator {
     if (usedWords && usedWords.has(normalized)) {
       return {
         valid: false,
-        reason: `Kata '${normalized.toUpperCase()}' sudah pernah dipakai dalam sesi ini!`,
+        reason: `Kata '${normalized.toUpperCase()}' sudah pernah dipakai dalam game ini! Silakan cari kata lain.`,
         normalized
       };
     }
@@ -131,7 +144,7 @@ export class WordValidator {
     if (!this.wordsSet.has(normalized)) {
       return {
         valid: false,
-        reason: `Kata '${normalized.toUpperCase()}' tidak ditemukan dalam kamus lokal!`,
+        reason: `Kata '${normalized.toUpperCase()}' tidak ditemukan dalam kamus KBBI / bahasa Inggris!`,
         normalized
       };
     }
@@ -197,10 +210,25 @@ export class WordValidator {
     return { valid: true };
   }
 
-  getRandomStartingWord() {
-    const list = Array.from(this.wordsSet);
+  getRandomLetter(exclude = null) {
+    const letters = [];
+    for (let i = 97; i <= 122; i++) {
+      const char = String.fromCharCode(i);
+      if (this.wordsByInitial[char] && this.wordsByInitial[char].length > 0) {
+        if (!exclude || char !== exclude.toLowerCase()) {
+          letters.push(char);
+        }
+      }
+    }
+    if (!letters.length) return 'a';
+    return letters[Math.floor(Math.random() * letters.length)];
+  }
+
+  getRandomStartingWord(startingLetter = null) {
+    const letter = (startingLetter || this.getRandomLetter()).toLowerCase();
+    const list = this.wordsByInitial[letter] || [];
     if (!list.length) return 'buku';
-    // Pick common simple starter words with friendly endings
+    // Pick common simple starter words with friendly endings (length 3-6)
     const safeStarters = list.filter(w => w.length >= 3 && w.length <= 6);
     const pool = safeStarters.length ? safeStarters : list;
     return pool[Math.floor(Math.random() * pool.length)];

@@ -1563,10 +1563,22 @@ html, body {
   animation: shake 0.4s ease;
 }
 
+.input-error-shake {
+  animation: shakeInput 0.4s ease !important;
+  border-color: var(--color-danger) !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.4) !important;
+}
+
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
   20%, 60% { transform: translateX(-6px); }
   40%, 80% { transform: translateX(6px); }
+}
+
+@keyframes shakeInput {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
 }
 
 /* Spectator Reaction Box (Waiting for turn in Multi-Device) */

@@ -218,6 +218,21 @@
               </div>
             </div>
 
+            <!-- Letter Flow: Chain vs Random A-Z -->
+            <div class="setting-group">
+              <label class="setting-label">Alur Huruf Permainan</label>
+              <div class="pill-selector host-flow-selector" role="radiogroup">
+                <button type="button" class="pill-opt active" data-flow="chain">
+                  <span class="pill-title">🔗 Sambung Huruf Terakhir (Klasik)</span>
+                  <span class="pill-desc">Huruf kamu diambil dari huruf terakhir kata lawan.</span>
+                </button>
+                <button type="button" class="pill-opt" data-flow="random">
+                  <span class="pill-title">🎲 Huruf Acak A-Z (Semua Huruf Muncul)</span>
+                  <span class="pill-desc">Setiap giliran, sistem mengocok huruf baru secara acak A-Z!</span>
+                </button>
+              </div>
+            </div>
+
             <!-- Timer Duration -->
             <div class="setting-group">
               <label class="setting-label">Durasi Timer Per Giliran</label>
@@ -361,6 +376,21 @@
                 <button type="button" class="pill-opt" data-mode="suddendeath" role="radio" aria-checked="false">
                   <span class="pill-title">⚡ Sudden Death</span>
                   <span class="pill-desc">1 Nyawa, satu kesalahan langsung gugur!</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Letter Flow: Chain vs Random A-Z -->
+            <div class="setting-group">
+              <label class="setting-label">Alur Huruf Permainan</label>
+              <div class="pill-selector setup-flow-selector" role="radiogroup">
+                <button type="button" class="pill-opt active" data-flow="chain" role="radio" aria-checked="true">
+                  <span class="pill-title">🔗 Sambung Huruf Terakhir (Klasik)</span>
+                  <span class="pill-desc">Huruf kamu diambil dari huruf terakhir kata lawan.</span>
+                </button>
+                <button type="button" class="pill-opt" data-flow="random" role="radio" aria-checked="false">
+                  <span class="pill-title">🎲 Huruf Acak A-Z (Semua Huruf Muncul)</span>
+                  <span class="pill-desc">Setiap giliran, sistem mengocok huruf baru secara acak A-Z!</span>
                 </button>
               </div>
             </div>

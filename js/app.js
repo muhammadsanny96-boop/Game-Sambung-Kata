@@ -36,8 +36,12 @@ class SambunginApp {
       mode: 'lps',
       timer: 10,
       lives: 3,
-      challenge: 'normal'
+      challenge: 'normal',
+      letterFlow: 'chain' // 'chain' (sambung huruf akhir) or 'random' (acak huruf A-Z)
     };
+
+    // Synchronized set of used words for immediate client rejection
+    this.clientUsedWords = new Set();
 
     // User Preferences (Persisted in localStorage)
     this.prefs = {
@@ -186,6 +190,7 @@ class SambunginApp {
     this.gamePrevWord = document.getElementById('game-prev-word');
     this.gameRequiredLetter = document.getElementById('game-required-letter');
     this.formSubmitWord = document.getElementById('form-submit-word');
+    this.inputWrapper = document.querySelector('.input-wrapper.with-prefix') || document.querySelector('.input-wrapper');
     this.inputPrefixBadge = document.getElementById('input-prefix-badge');
     this.inputPrefixLetter = document.getElementById('input-prefix-letter');
     this.inputWord = document.getElementById('input-word');
@@ -436,6 +441,20 @@ class SambunginApp {
       });
     });
 
+    // Pass & Play Letter Flow Selector
+    document.querySelectorAll('.setup-flow-selector .pill-opt').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.audio.playClick();
+        document.querySelectorAll('.setup-flow-selector .pill-opt').forEach(b => {
+          b.classList.remove('active');
+          b.setAttribute('aria-checked', 'false');
+        });
+        btn.classList.add('active');
+        btn.setAttribute('aria-checked', 'true');
+        this.setupConfig.letterFlow = btn.dataset.flow || 'chain';
+      });
+    });
+
     document.querySelectorAll('.timer-grid .chip-opt').forEach(btn => {
       btn.addEventListener('click', () => {
         this.audio.playClick();
@@ -545,6 +564,20 @@ class SambunginApp {
         document.querySelectorAll('.host-mode-selector .pill-opt').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         this.setupConfig.mode = btn.dataset.mode;
+      });
+    });
+
+    // Host Letter Flow Selector in Lobby
+    document.querySelectorAll('.host-flow-selector .pill-opt').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.audio.playClick();
+        document.querySelectorAll('.host-flow-selector .pill-opt').forEach(b => {
+          b.classList.remove('active');
+          b.setAttribute('aria-checked', 'false');
+        });
+        btn.classList.add('active');
+        btn.setAttribute('aria-checked', 'true');
+        this.setupConfig.letterFlow = btn.dataset.flow || 'chain';
       });
     });
 
@@ -755,7 +788,8 @@ class SambunginApp {
         this.network.broadcast('REMOTE_WORD_ACCEPTED', {
           data,
           history: this.engine.wordHistory,
-          players: this.engine.players
+          players: this.engine.players,
+          usedWords: Array.from(this.engine.usedWords)
         });
       }
     };
@@ -829,8 +863,8 @@ class SambunginApp {
         if (currentActive && currentActive.id === senderPeerId) {
           const res = this.engine.submitWord(payload.word);
           if (!res.success) {
-            // Send error feedback directly back to client
-            this.network.sendToHost('WORD_ERROR_FEEDBACK', { message: res.message });
+            // Send error feedback directly back to specific client
+            this.network.sendToClient(senderPeerId, 'WORD_ERROR_FEEDBACK', { message: res.message, word: payload.word });
           }
         }
       } else if (type === 'CLIENT_USE_LIFELINE') {
@@ -862,6 +896,7 @@ class SambunginApp {
 
         case 'REMOTE_GAME_START':
           this.setupConfig = payload.config;
+          this.clientUsedWords = new Set();
           this.showScreen('game');
           this.showToast('Game dimulai!');
           break;
@@ -874,11 +909,25 @@ class SambunginApp {
           this.updateTimerDisplay(payload.seconds, payload.fraction);
           break;
 
+        case 'WORD_ERROR_FEEDBACK':
+          this.audio.playError();
+          this.setWordFeedback(payload.message, false);
+          this.showToast(`❌ ${payload.message}`);
+          this.shakeInput();
+          if (this.inputWord) {
+            this.inputWord.select();
+          }
+          this.triggerHaptic('error');
+          break;
+
         case 'REMOTE_WORD_ACCEPTED':
           this.audio.playCorrect();
           this.setWordFeedback(`Benar! +${payload.data.points} Poin`, true);
           this.renderClientWordHistory(payload.history);
           this.renderClientMiniRoster(payload.players);
+          if (payload.usedWords && Array.isArray(payload.usedWords)) {
+            this.clientUsedWords = new Set(payload.usedWords);
+          }
           this.triggerHaptic('correct');
           break;
 
@@ -1000,11 +1049,13 @@ class SambunginApp {
       players: roster
     });
 
+    this.clientUsedWords = new Set();
     this.engine.startNewGame(roster, {
       mode: this.setupConfig.mode,
       timerDuration: this.setupConfig.timer,
       initialLives: this.setupConfig.lives,
       challengeDifficulty: this.setupConfig.challenge,
+      letterFlow: this.setupConfig.letterFlow || 'chain',
       autoStartTurn: true
     });
   }
@@ -1229,11 +1280,13 @@ class SambunginApp {
     if (!this.validateSetupState()) return;
 
     this.audio.playClick();
+    this.clientUsedWords = new Set();
     this.engine.startNewGame(this.players, {
       mode: this.setupConfig.mode,
       timerDuration: this.setupConfig.timer,
       initialLives: this.setupConfig.lives,
-      challengeDifficulty: this.setupConfig.challenge
+      challengeDifficulty: this.setupConfig.challenge,
+      letterFlow: this.setupConfig.letterFlow || 'chain'
     });
   }
 
@@ -1393,14 +1446,44 @@ class SambunginApp {
     return Boolean(this.currentTurnPlayer && this.currentTurnPlayer.id === this.myNetworkId);
   }
 
+  shakeInput() {
+    const target = this.inputWrapper || this.inputWord;
+    if (target) {
+      target.classList.remove('input-error-shake');
+      void target.offsetWidth;
+      target.classList.add('input-error-shake');
+      setTimeout(() => {
+        if (target) target.classList.remove('input-error-shake');
+      }, 500);
+    }
+  }
+
   resolveSubmittedWord(raw, reqLetter) {
     if (!raw) return '';
-    const clean = raw.trim().toLowerCase();
+    const clean = raw.trim().toLowerCase().replace(/[^a-z]/g, '');
     const req = (reqLetter || '').trim().toLowerCase();
     if (!req) return clean;
+
+    // If player already typed the required initial letter (e.g. "nasi" when required is "n")
     if (clean.startsWith(req)) {
       return clean;
     }
+
+    // Check against wordValidator
+    const validator = this.validator || (this.engine ? this.engine.validator : null);
+    if (validator && validator.wordsSet) {
+      // If player only typed remainder/suffix (e.g. "asi" when required is "n", candidate is "nasi")
+      const candidateWithPrefix = req + clean;
+      if (validator.wordsSet.has(candidateWithPrefix)) {
+        return candidateWithPrefix;
+      }
+      // If player typed a valid dictionary word that starts with another letter (e.g. "makan")
+      if (validator.wordsSet.has(clean)) {
+        return clean; // Let validator clearly explain: "Kata 'MAKAN' diawali huruf 'M', padahal giliran ini wajib huruf 'N'!"
+      }
+    }
+
+    // Default: prepend required prefix
     return req + clean;
   }
 
@@ -1432,11 +1515,28 @@ class SambunginApp {
       return;
     }
 
-    const raw = this.inputWord.value;
+    const raw = (this.inputWord ? this.inputWord.value : '').trim();
+    if (!raw) {
+      this.showToast('⚠️ Ketik kata terlebih dahulu!');
+      this.shakeInput();
+      return;
+    }
+
     const reqLetter = (this.engine && this.engine.requiredLetter)
       ? this.engine.requiredLetter
       : (this.gameRequiredLetter ? this.gameRequiredLetter.textContent : '');
     const resolvedWord = this.resolveSubmittedWord(raw, reqLetter);
+
+    // Client-side instant duplicate check if known
+    if (this.gameSessionType === 'NETWORK' && this.network.role === 'CLIENT' && this.clientUsedWords && this.clientUsedWords.has(resolvedWord)) {
+      const msg = `Kata "${resolvedWord.toUpperCase()}" sudah pernah digunakan dalam game ini!`;
+      this.audio.playError();
+      this.setWordFeedback(msg, false);
+      this.showToast(`❌ ${msg}`);
+      this.shakeInput();
+      if (this.inputWord) this.inputWord.select();
+      return;
+    }
 
     if (this.gameSessionType === 'LOCAL') {
       const res = this.engine.submitWord(resolvedWord);
@@ -1444,7 +1544,10 @@ class SambunginApp {
         if (res.success) {
           this.inputWord.blur();
         } else {
+          this.audio.playError();
           this.setWordFeedback(res.message, false);
+          this.showToast(`❌ ${res.message}`);
+          this.shakeInput();
           this.inputWord.select();
         }
       }
@@ -1452,7 +1555,10 @@ class SambunginApp {
       if (this.network.role === 'HOST') {
         const res = this.engine.submitWord(resolvedWord);
         if (!res.success) {
+          this.audio.playError();
           this.setWordFeedback(res.message, false);
+          this.showToast(`❌ ${res.message}`);
+          this.shakeInput();
           this.inputWord.select();
         }
       } else {

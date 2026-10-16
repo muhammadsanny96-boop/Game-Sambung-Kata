@@ -17,7 +17,8 @@ export class GameEngine {
       initialLives: 3,       // 1, 3, 5
       challengeDifficulty: 'normal', // 'off', 'casual', 'normal', 'chaos'
       freePlayMaxRounds: 20,
-      autoStartTurn: false   // If true (Multi-device), turns start immediately without 'Ready' pause!
+      autoStartTurn: false,  // If true (Multi-device), turns start immediately without 'Ready' pause!
+      letterFlow: 'chain'    // 'chain' (sambung huruf terakhir), 'random' (huruf acak A-Z setiap turn)
     };
 
     // State Variables
@@ -49,6 +50,10 @@ export class GameEngine {
     this.onGameOver = null;
   }
 
+  get letterFlow() {
+    return (this.config && this.config.letterFlow) ? this.config.letterFlow : 'chain';
+  }
+
   /**
    * Initializes a new game session with given players and settings.
    */
@@ -75,10 +80,13 @@ export class GameEngine {
     this.winner = null;
     this.isProcessingTurn = false;
 
-    // Pick first starter word
-    this.currentWord = this.validator.getRandomStartingWord();
+    // Pick first starter letter & word from full A-Z
+    const startLetter = this.validator.getRandomLetter();
+    this.currentWord = this.validator.getRandomStartingWord(startLetter);
     this.usedWords.add(this.validator.normalize(this.currentWord));
-    this.requiredLetter = this.validator.getLastLetter(this.currentWord);
+    this.requiredLetter = (this.config.letterFlow === 'random')
+      ? this.validator.getRandomLetter()
+      : this.validator.getLastLetter(this.currentWord);
 
     // Prepare first turn
     this.prepareTurn();
@@ -262,7 +270,9 @@ export class GameEngine {
       this.handleWordSuccess(validation.normalized);
       return { handled: true, success: true, message: validation.reason, word: validation.normalized };
     } else {
-      this.audio.playError();
+      if (this.audio && typeof this.audio.playError === 'function') {
+        this.audio.playError();
+      }
       this.isProcessingTurn = false; // Unlock so player can re-type before timer runs out
       return { handled: true, success: false, message: validation.reason };
     }
@@ -275,7 +285,9 @@ export class GameEngine {
     const player = this.getCurrentPlayer();
     this.usedWords.add(validWord);
     this.currentWord = validWord;
-    this.requiredLetter = this.validator.getLastLetter(validWord);
+    this.requiredLetter = (this.config.letterFlow === 'random')
+      ? this.validator.getRandomLetter(this.requiredLetter)
+      : this.validator.getLastLetter(validWord);
     this.totalRoundsPlayed++;
 
     // Calculate score
@@ -321,7 +333,9 @@ export class GameEngine {
     if (this.isProcessingTurn) return;
     this.isProcessingTurn = true;
 
-    this.audio.playError();
+    if (this.audio && typeof this.audio.playError === 'function') {
+      this.audio.playError();
+    }
     const player = this.getCurrentPlayer();
     let penalty = 1;
 
@@ -398,10 +412,8 @@ export class GameEngine {
       player.lifelines--;
     }
 
-    // Pick a new friendly random letter
-    const vowels = ['a', 'e', 'i', 'u', 'o', 'b', 'k', 'm', 't', 's'];
-    const filtered = vowels.filter(v => v !== this.requiredLetter);
-    this.requiredLetter = filtered[Math.floor(Math.random() * filtered.length)];
+    // Pick a new random letter from full A-Z alphabet
+    this.requiredLetter = this.validator.getRandomLetter(this.requiredLetter);
 
     return true;
   }
@@ -433,7 +445,9 @@ export class GameEngine {
     this.stopTimer();
     this.state = 'GAME_OVER';
     this.winner = winnerPlayer;
-    this.audio.playVictory();
+    if (this.audio && typeof this.audio.playVictory === 'function') {
+      this.audio.playVictory();
+    }
 
     if (this.onGameOver) {
       this.onGameOver({
