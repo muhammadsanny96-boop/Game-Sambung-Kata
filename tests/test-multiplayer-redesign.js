@@ -58,11 +58,12 @@ async function runTests() {
     { id: 'peer_client2', name: 'Client 2' }
   ];
 
-  // Start game with autoStartTurn: true
+  // Start game with autoStartTurn: true and challenge off
   engine.startNewGame(players, {
     mode: 'lps',
     timerDuration: 10,
     initialLives: 3,
+    challengeDifficulty: 'off',
     autoStartTurn: true
   });
 

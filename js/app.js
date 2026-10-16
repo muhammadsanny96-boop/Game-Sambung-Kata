@@ -59,6 +59,15 @@ class SambunginApp {
   }
 
   async init() {
+    // Touch/pointer audio pre-warming for zero-latency sound effects on mobile
+    const unlockAudio = () => {
+      if (this.audio) this.audio.init();
+      document.removeEventListener('pointerdown', unlockAudio);
+      document.removeEventListener('touchstart', unlockAudio);
+    };
+    document.addEventListener('pointerdown', unlockAudio, { passive: true });
+    document.addEventListener('touchstart', unlockAudio, { passive: true });
+
     await this.validator.loadDataset('data/words.json');
     console.log(`[SAMBUNGIN] Kamus siap. ${this.validator.wordsSet.size} kosakata aktif.`);
 
@@ -67,11 +76,13 @@ class SambunginApp {
     if (roomFromUrl) {
       this.gameSessionType = 'NETWORK';
       this.showScreen('lobbyClient');
-      this.inputClientRoomCode.value = roomFromUrl.toUpperCase();
-      this.clientConnectBox.classList.remove('hidden');
-      this.clientWaitingBox.classList.add('hidden');
+      if (this.inputClientRoomCode) this.inputClientRoomCode.value = roomFromUrl.toUpperCase();
+      if (this.clientConnectBox) this.clientConnectBox.classList.remove('hidden');
+      if (this.clientWaitingBox) this.clientWaitingBox.classList.add('hidden');
       this.showToast(`Kode room ${roomFromUrl.toUpperCase()} terdeteksi otomatis!`);
-      setTimeout(() => this.inputClientName.focus(), 250);
+      setTimeout(() => {
+        if (this.inputClientName) this.inputClientName.focus();
+      }, 250);
     }
   }
 
@@ -293,31 +304,50 @@ class SambunginApp {
   }
 
   bindEvents() {
+    // Safe binding helper
+    const on = (el, evt, fn) => {
+      if (el) el.addEventListener(evt, fn);
+    };
+
     // 1. Home Navigation
-    this.btnStartSetup.addEventListener('click', () => {
+    on(this.btnStartSetup, 'click', () => {
       this.audio.playClick();
       this.gameSessionType = 'LOCAL';
       this.showScreen('setup');
     });
 
-    this.btnOpenMultiplayer.addEventListener('click', () => {
+    on(this.btnOpenMultiplayer, 'click', () => {
       this.audio.playClick();
       this.gameSessionType = 'NETWORK';
       this.showScreen('multiChoice');
     });
 
-    this.btnBackMultiToHome.addEventListener('click', () => {
+    // Also support card clicks if present in the DOM
+    const cardMabar = document.getElementById('card-mode-multiplayer');
+    on(cardMabar, 'click', () => {
+      this.audio.playClick();
+      this.gameSessionType = 'NETWORK';
+      this.showScreen('multiChoice');
+    });
+    const cardPassplay = document.getElementById('card-mode-passplay');
+    on(cardPassplay, 'click', () => {
+      this.audio.playClick();
+      this.gameSessionType = 'LOCAL';
+      this.showScreen('setup');
+    });
+
+    on(this.btnBackMultiToHome, 'click', () => {
       this.audio.playClick();
       this.showScreen('home');
     });
 
-    this.btnBackToHome.addEventListener('click', () => {
+    on(this.btnBackToHome, 'click', () => {
       this.audio.playClick();
       this.showScreen('home');
     });
 
-    this.navBrandBtn.addEventListener('click', () => {
-      if (this.engine.state === 'PLAYING') {
+    on(this.navBrandBtn, 'click', () => {
+      if (this.engine && this.engine.state === 'PLAYING') {
         this.openModal('pause');
       } else {
         this.audio.playClick();
@@ -326,27 +356,27 @@ class SambunginApp {
     });
 
     // 2. Modals
-    this.btnQuickRules.addEventListener('click', () => {
+    on(this.btnQuickRules, 'click', () => {
       this.audio.playClick();
       this.openModal('howTo');
     });
-    this.btnOpenHowTo.addEventListener('click', () => {
+    on(this.btnOpenHowTo, 'click', () => {
       this.audio.playClick();
       this.openModal('howTo');
     });
-    this.btnCloseHowTo.addEventListener('click', () => this.closeModal('howTo'));
-    this.btnCloseHowToBottom.addEventListener('click', () => this.closeModal('howTo'));
+    on(this.btnCloseHowTo, 'click', () => this.closeModal('howTo'));
+    on(this.btnCloseHowToBottom, 'click', () => this.closeModal('howTo'));
 
-    this.btnHomeSettings.addEventListener('click', () => {
+    on(this.btnHomeSettings, 'click', () => {
       this.audio.playClick();
       this.openModal('settings');
     });
-    this.btnOpenSettings.addEventListener('click', () => {
+    on(this.btnOpenSettings, 'click', () => {
       this.audio.playClick();
       this.openModal('settings');
     });
-    this.btnCloseSettings.addEventListener('click', () => this.closeModal('settings'));
-    this.btnCloseSettingsBottom.addEventListener('click', () => this.closeModal('settings'));
+    on(this.btnCloseSettings, 'click', () => this.closeModal('settings'));
+    on(this.btnCloseSettingsBottom, 'click', () => this.closeModal('settings'));
 
     // 3. Settings Form
     this.settingSound.addEventListener('change', (e) => {
@@ -568,10 +598,27 @@ class SambunginApp {
     });
 
     // 7. Gameplay Input
-    this.formSubmitWord.addEventListener('submit', (e) => {
-      e.preventDefault();
-      this.handleSubmitWord();
-    });
+    if (this.formSubmitWord) {
+      this.formSubmitWord.addEventListener('submit', (e) => {
+        e.preventDefault();
+        this.handleSubmitWord();
+      });
+    }
+
+    if (this.inputWord) {
+      const blockIfNotMyTurn = (e) => {
+        if (!this.isMyTurnNow()) {
+          e.preventDefault();
+          e.stopPropagation();
+          this.inputWord.readOnly = true;
+          this.inputWord.disabled = true;
+          this.inputWord.blur();
+          return false;
+        }
+      };
+      this.inputWord.addEventListener('keydown', blockIfNotMyTurn);
+      this.inputWord.addEventListener('beforeinput', blockIfNotMyTurn);
+    }
 
     this.btnUseLifeline.addEventListener('click', () => {
       this.audio.playClick();
@@ -1011,6 +1058,7 @@ class SambunginApp {
   handleClientTurnStart(payload) {
     this.showScreen('game');
     const { player, requiredLetter, prevWord, challenge, players } = payload;
+    this.currentTurnPlayer = player;
 
     this.gameActivePlayerName.textContent = player.name;
 
@@ -1267,6 +1315,7 @@ class SambunginApp {
   updateTurnActiveState(player, requiredLetter) {
     if (!player) return;
 
+    this.currentTurnPlayer = player;
     const isMyTurn = (this.gameSessionType === 'LOCAL' || player.id === this.myNetworkId);
     const req = (requiredLetter || '').toUpperCase();
 
@@ -1288,31 +1337,60 @@ class SambunginApp {
       }
     }
 
-    // Toggle Input form vs Spectator reaction box
+    // Toggle Input form vs Spectator reaction box with strict mobile lockdown
     if (isMyTurn) {
-      if (this.formSubmitWord) this.formSubmitWord.classList.remove('hidden');
-      if (this.spectatorReactionBox) this.spectatorReactionBox.classList.add('hidden');
-      this.inputWord.disabled = false;
-      this.inputWord.value = '';
-      this.inputWord.placeholder = 'Ketik kelanjutannya...';
-      this.btnSubmitWord.disabled = false;
-      this.btnUseLifeline.disabled = (player.lifelines <= 0);
+      if (this.formSubmitWord) {
+        this.formSubmitWord.style.display = 'block';
+        this.formSubmitWord.classList.remove('hidden');
+      }
+      if (this.spectatorReactionBox) {
+        this.spectatorReactionBox.style.display = 'none';
+        this.spectatorReactionBox.classList.add('hidden');
+      }
+      if (this.inputWord) {
+        this.inputWord.disabled = false;
+        this.inputWord.readOnly = false;
+        this.inputWord.value = '';
+        this.inputWord.placeholder = 'Ketik kelanjutannya...';
+      }
+      if (this.btnSubmitWord) this.btnSubmitWord.disabled = false;
+      if (this.btnUseLifeline) this.btnUseLifeline.disabled = (player.lifelines <= 0);
       this.triggerHaptic('turn');
       setTimeout(() => {
-        if (this.inputWord) this.inputWord.focus();
+        if (this.inputWord && !this.inputWord.disabled && !this.inputWord.readOnly) {
+          this.inputWord.focus();
+        }
       }, 100);
     } else {
-      if (this.formSubmitWord) this.formSubmitWord.classList.add('hidden');
+      if (this.formSubmitWord) {
+        this.formSubmitWord.style.display = 'none';
+        this.formSubmitWord.classList.add('hidden');
+      }
       if (this.spectatorReactionBox) {
+        this.spectatorReactionBox.style.display = 'block';
         this.spectatorReactionBox.classList.remove('hidden');
         if (this.spectatorStatusText) {
           this.spectatorStatusText.innerHTML = `<span>⏳ Giliran <strong>${escapeHtml(player.name)}</strong> (${player.lives || 0}❤️). Beri reaksi:</span>`;
         }
       }
-      this.inputWord.disabled = true;
-      this.btnSubmitWord.disabled = true;
-      this.btnUseLifeline.disabled = true;
+      if (this.inputWord) {
+        this.inputWord.readOnly = true;
+        this.inputWord.disabled = true;
+        this.inputWord.value = '';
+        this.inputWord.blur();
+      }
+      if (this.btnSubmitWord) this.btnSubmitWord.disabled = true;
+      if (this.btnUseLifeline) this.btnUseLifeline.disabled = true;
     }
+  }
+
+  isMyTurnNow() {
+    if (this.gameSessionType === 'LOCAL') return true;
+    if (this.network && this.network.role === 'HOST') {
+      const active = this.engine ? this.engine.getCurrentPlayer() : null;
+      return Boolean(active && active.id === this.myNetworkId);
+    }
+    return Boolean(this.currentTurnPlayer && this.currentTurnPlayer.id === this.myNetworkId);
   }
 
   resolveSubmittedWord(raw, reqLetter) {
@@ -1344,6 +1422,16 @@ class SambunginApp {
   }
 
   handleSubmitWord() {
+    if (!this.isMyTurnNow()) {
+      this.showToast('⏳ Bukan giliranmu menjawab!');
+      if (this.inputWord) {
+        this.inputWord.readOnly = true;
+        this.inputWord.disabled = true;
+        this.inputWord.blur();
+      }
+      return;
+    }
+
     const raw = this.inputWord.value;
     const reqLetter = (this.engine && this.engine.requiredLetter)
       ? this.engine.requiredLetter

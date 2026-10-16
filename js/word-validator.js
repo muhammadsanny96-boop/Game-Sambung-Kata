@@ -31,7 +31,7 @@ export class WordValidator {
         throw new Error(`Gagal memuat dataset: HTTP ${response.status}`);
       }
       const data = await response.json();
-      this.populate(data.words || []);
+      this.populate(data);
       this.isLoaded = true;
       return true;
     } catch (err) {
@@ -43,16 +43,31 @@ export class WordValidator {
     }
   }
 
-  populate(wordsArray) {
+  populate(data) {
     this.wordsSet.clear();
     this.wordsMetadata.clear();
-    for (const item of wordsArray) {
+
+    const wordsList = Array.isArray(data) ? data : (data.words || []);
+    const catMap = (typeof data === 'object' && !Array.isArray(data) && data.categories) ? data.categories : {};
+
+    for (let i = 0; i < wordsList.length; i++) {
+      const item = wordsList[i];
       const w = typeof item === 'string' ? item : item.word;
-      const cat = typeof item === 'object' && item.category ? item.category.toLowerCase() : 'umum';
       const norm = this.normalize(w);
       if (norm) {
         this.wordsSet.add(norm);
-        this.wordsMetadata.set(norm, { category: cat });
+
+        // Memory optimization: only allocate metadata for words with specific categories
+        let cat = null;
+        if (typeof item === 'object' && item && item.category && item.category !== 'umum') {
+          cat = String(item.category).toLowerCase();
+        } else if (catMap && Object.hasOwn(catMap, norm)) {
+          cat = String(catMap[norm]).toLowerCase();
+        }
+
+        if (cat) {
+          this.wordsMetadata.set(norm, { category: cat });
+        }
       }
     }
   }

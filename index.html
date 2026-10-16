@@ -75,33 +75,41 @@
           </div>
         </div>
 
-        <!-- Distinct Game Mode Selection Cards -->
-        <div class="mode-cards-container">
-          <div class="mode-select-card card-mabar" id="card-mode-multiplayer" role="button" tabindex="0">
-            <div class="mode-card-badge">POPULER 🔥</div>
-            <div class="mode-card-icon">🎮</div>
-            <div class="mode-card-content">
-              <h3 class="mode-card-title">MABAR DI HP MASING-MASING</h3>
-              <p class="mode-card-desc">Bikin room dengan kode 4 huruf, semua teman main dari HP sendiri secara online!</p>
+        <!-- Home Action Buttons -->
+        <div class="home-actions">
+          <button id="btn-open-multiplayer" class="btn btn-hero btn-mabar-hero">
+            <span class="hero-btn-badge">POPULER 🔥</span>
+            <div class="hero-btn-content">
+              <span class="hero-btn-icon">🎮</span>
+              <div class="hero-btn-text">
+                <span class="hero-btn-title">MABAR DI HP MASING-MASING</span>
+                <span class="hero-btn-desc">Bikin room dengan kode 4 huruf, semua teman main dari HP sendiri secara online!</span>
+              </div>
             </div>
-            <span class="mode-card-arrow">➔</span>
-          </div>
-
-          <div class="mode-select-card card-passplay" id="card-mode-passplay" role="button" tabindex="0">
-            <div class="mode-card-icon">📱</div>
-            <div class="mode-card-content">
-              <h3 class="mode-card-title">1 PERANGKAT (PASS & PLAY)</h3>
-              <p class="mode-card-desc">Main gantian di 1 HP atau laptop yang sama saat nongkrong santai bareng.</p>
-            </div>
-            <span class="mode-card-arrow">➔</span>
-          </div>
-        </div>
-
-        <div class="home-bottom-actions">
-          <button id="btn-quick-rules" class="btn btn-secondary btn-block">
-            <span class="btn-icon">📖</span>
-            <span class="btn-text">Cara Bermain & Aturan</span>
+            <span class="hero-btn-arrow">➔</span>
           </button>
+
+          <button id="btn-start-setup" class="btn btn-hero btn-passplay-hero">
+            <div class="hero-btn-content">
+              <span class="hero-btn-icon">📱</span>
+              <div class="hero-btn-text">
+                <span class="hero-btn-title">1 PERANGKAT (PASS & PLAY)</span>
+                <span class="hero-btn-desc">Main gantian di 1 HP atau laptop yang sama saat nongkrong bareng.</span>
+              </div>
+            </div>
+            <span class="hero-btn-arrow">➔</span>
+          </button>
+
+          <div class="home-secondary-row">
+            <button id="btn-quick-rules" class="btn btn-secondary">
+              <span class="btn-icon">📖</span>
+              <span class="btn-text">Cara Bermain</span>
+            </button>
+            <button id="btn-home-settings" class="btn btn-secondary">
+              <span class="btn-icon">⚙️</span>
+              <span class="btn-text">Pengaturan</span>
+            </button>
+          </div>
         </div>
 
         <div class="home-features-pill">
@@ -509,7 +517,7 @@
             <div class="input-prefix-badge" id="input-prefix-badge" title="Huruf wajib sudah otomatis terisi">
               <span id="input-prefix-letter">U</span>
             </div>
-            <input type="text" id="input-word" placeholder="Ketik kelanjutannya..." autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" maxlength="24">
+            <input type="text" id="input-word" placeholder="Ketik kelanjutannya..." autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" maxlength="24" enterkeyhint="send" inputmode="text">
             <button type="submit" id="btn-submit-word" class="btn btn-submit">
               <span>KIRIM ↵</span>
             </button>
