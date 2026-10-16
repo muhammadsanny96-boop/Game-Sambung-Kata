@@ -3,14 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="description" content="SAMBUNGIN! Game party sambung kata seru untuk dimainkan bersama di satu perangkat. Pass and play, adu kosakata, dan taklukkan tantangannya!">
+  <meta name="description" content="SAMBUNGIN! Game party sambung kata seru untuk dimainkan bersama di satu perangkat atau di HP masing-masing!">
   <title>SAMBUNGIN! — Party Word Chain Game</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+  <!-- Local PeerJS Library for P2P WebRTC Multi-Device -->
+  <script src="js/lib/peerjs.min.js"></script>
 </head>
 <body>
+  <!-- Canvas Confetti Overlay -->
+  <canvas id="confetti-canvas" class="confetti-canvas"></canvas>
+
   <!-- Background Glow Orbs -->
   <div class="bg-effects" aria-hidden="true">
     <div class="glow-orb orb-1"></div>
@@ -22,7 +27,7 @@
     <!-- Top Global Header -->
     <header class="top-nav">
       <div class="nav-brand" id="nav-brand-btn" role="button" tabindex="0">
-        <span class="brand-badge">🎮 PARTY</span>
+        <span class="brand-badge" id="global-mode-badge">🎮 PARTY</span>
         <h1 class="brand-title">SAMBUNGIN<span>!</span></h1>
       </div>
       <div class="nav-actions">
@@ -49,7 +54,7 @@
       <section id="screen-home" class="screen active">
         <div class="hero-section">
           <div class="hero-badge-tag">
-            <span class="dot-pulse"></span> Pass-and-Play Multiplayer
+            <span class="dot-pulse"></span> Pass-and-Play & Multi-Device
           </div>
           <div class="hero-logo-box">
             <h2 class="hero-title">SAMBUNGIN<span class="hero-exclaim">!</span></h2>
@@ -69,8 +74,13 @@
 
         <div class="home-actions">
           <button id="btn-start-setup" class="btn btn-primary btn-hero">
-            <span class="btn-icon">⚡</span>
-            <span class="btn-text">MULAI BERMAIN</span>
+            <span class="btn-icon">📱</span>
+            <span class="btn-text">1 PERANGKAT (PASS & PLAY)</span>
+          </button>
+
+          <button id="btn-open-multiplayer" class="btn btn-network btn-hero">
+            <span class="btn-icon">📶</span>
+            <span class="btn-text">MAIN DI HP MASING-MASING</span>
           </button>
           
           <button id="btn-quick-rules" class="btn btn-secondary">
@@ -85,15 +95,186 @@
         </div>
 
         <div class="home-features-pill">
-          <span class="feature-item">📱 1 Perangkat Bersama</span>
+          <span class="feature-item">📱 Pass & Play / Online</span>
           <span class="feature-divider">•</span>
-          <span class="feature-item">📴 100% Offline</span>
+          <span class="feature-item">🔤 390k+ Kosakata ID & EN</span>
           <span class="feature-divider">•</span>
           <span class="feature-item">🎯 8 Tantangan Unik</span>
         </div>
       </section>
 
-      <!-- ================= 2. SETUP SCREEN ================= -->
+      <!-- ================= 2. MULTIPLAYER CHOICE SCREEN ================= -->
+      <section id="screen-multiplayer-choice" class="screen">
+        <div class="screen-header">
+          <button id="btn-back-multi-to-home" class="btn-back" aria-label="Kembali ke Beranda">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            <span>Kembali</span>
+          </button>
+          <h2 class="section-title">Mode Multi-Device</h2>
+          <div class="header-spacer"></div>
+        </div>
+
+        <div class="setup-scroll-area">
+          <div class="setup-card text-center">
+            <h3 class="card-title">Main Bersama di HP Masing-Masing</h3>
+            <p class="card-desc">Satu orang membuat Room (Host) dan teman-teman bergabung menggunakan Kode Room.</p>
+          </div>
+
+          <div class="home-actions">
+            <button id="btn-choice-create-room" class="btn btn-primary btn-lg">
+              <span class="btn-icon">👑</span>
+              <span class="btn-text">Buat Room Baru (Host)</span>
+            </button>
+
+            <button id="btn-choice-join-room" class="btn btn-network btn-lg">
+              <span class="btn-icon">🚪</span>
+              <span class="btn-text">Gabung Room Teman (Join)</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 3. LOBBY HOST SCREEN ================= -->
+      <section id="screen-lobby-host" class="screen">
+        <div class="screen-header">
+          <button id="btn-leave-host-room" class="btn-back" aria-label="Tutup Room">
+            <span>✕ Tutup Room</span>
+          </button>
+          <h2 class="section-title">Lobby Host</h2>
+          <div class="header-spacer"></div>
+        </div>
+
+        <div class="setup-scroll-area">
+          <!-- Room Code Card -->
+          <div class="room-code-card">
+            <div class="room-code-label">KODE ROOM UNTUK TEMAN:</div>
+            <div id="host-room-code-display" class="room-code-display">----</div>
+            <button id="btn-copy-room-code" class="btn-copy-code" type="button">
+              📋 Salin Kode Room
+            </button>
+          </div>
+
+          <!-- Players joined -->
+          <div class="lobby-players-box">
+            <div class="card-header-row">
+              <h3 class="card-title">Pemain Terhubung</h3>
+              <span id="host-player-count-badge" class="badge-count">1 Pemain</span>
+            </div>
+            <div id="host-lobby-players-list">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+          <!-- Game Options Card -->
+          <div class="setup-card">
+            <h3 class="card-title">Pengaturan Ronde</h3>
+            
+            <!-- Game Mode -->
+            <div class="setting-group">
+              <label class="setting-label">Mode Permainan</label>
+              <div class="pill-selector host-mode-selector" role="radiogroup">
+                <button type="button" class="pill-opt active" data-mode="lps">
+                  <span class="pill-title">🏆 Last Player Standing</span>
+                  <span class="pill-desc">3 Nyawa, yang kehabisan nyawa tereliminasi!</span>
+                </button>
+                <button type="button" class="pill-opt" data-mode="freeplay">
+                  <span class="pill-title">🎯 Free Play</span>
+                  <span class="pill-desc">Tanpa eliminasi, kumpulkan poin kata terbanyak!</span>
+                </button>
+                <button type="button" class="pill-opt" data-mode="suddendeath">
+                  <span class="pill-title">⚡ Sudden Death</span>
+                  <span class="pill-desc">1 Nyawa, satu kesalahan langsung gugur!</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Timer Duration -->
+            <div class="setting-group">
+              <label class="setting-label">Durasi Timer Per Giliran</label>
+              <div class="chip-grid host-timer-grid">
+                <button type="button" class="chip-opt" data-timer="5">5s <small>(Kilat)</small></button>
+                <button type="button" class="chip-opt active" data-timer="10">10s <small>(Standar)</small></button>
+                <button type="button" class="chip-opt" data-timer="15">15s <small>(Santai)</small></button>
+                <button type="button" class="chip-opt" data-timer="20">20s <small>(Pemula)</small></button>
+              </div>
+            </div>
+
+            <!-- Challenge Level -->
+            <div class="setting-group">
+              <label class="setting-label">Tingkat Tantangan Acak</label>
+              <div class="chip-grid host-challenge-grid">
+                <button type="button" class="chip-opt" data-challenge="off">Nonaktif</button>
+                <button type="button" class="chip-opt" data-challenge="casual">Santai</button>
+                <button type="button" class="chip-opt active" data-challenge="normal">Normal</button>
+                <button type="button" class="chip-opt" data-challenge="chaos">Kacau 💥</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="setup-footer-bar">
+          <div id="host-validation-msg" class="validation-warning">Tunggu minimal 1 teman bergabung...</div>
+          <button id="btn-host-start-game" class="btn btn-primary btn-block btn-lg" disabled>
+            <span>MULAI PERMAINAN SEKARANG ➔</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- ================= 4. LOBBY CLIENT SCREEN ================= -->
+      <section id="screen-lobby-client" class="screen">
+        <div class="screen-header">
+          <button id="btn-leave-client-room" class="btn-back" aria-label="Keluar">
+            <span>✕ Keluar</span>
+          </button>
+          <h2 class="section-title">Gabung Room</h2>
+          <div class="header-spacer"></div>
+        </div>
+
+        <div class="setup-scroll-area">
+          <!-- Client Input Form (Before Connected) -->
+          <div id="client-connect-box" class="setup-card">
+            <h3 class="card-title">Masukkan Info Room</h3>
+            <p class="card-desc">Tanyakan Kode 4 Huruf kepada Host room kamu</p>
+
+            <form id="form-join-room" class="add-player-form" onsubmit="return false;" style="margin-top: 14px;">
+              <div style="margin-bottom: 12px;">
+                <label class="setting-label">Nama Kamu</label>
+                <input type="text" id="input-client-name" placeholder="Nama panggilan..." maxlength="16" class="btn-block" style="padding: 12px 14px; background: rgba(15, 23, 42, 0.8); border: 1.5px solid var(--bg-card-border); border-radius: var(--radius-md); color: var(--text-main); font-weight: 700; outline: none;">
+              </div>
+              
+              <div style="margin-bottom: 14px;">
+                <label class="setting-label">Kode Room (4 Karakter)</label>
+                <input type="text" id="input-client-room-code" placeholder="Contoh: A7K9" maxlength="6" class="btn-block" style="padding: 12px 14px; background: rgba(15, 23, 42, 0.8); border: 1.5px solid var(--bg-card-border); border-radius: var(--radius-md); color: var(--color-accent); font-family: var(--font-display); font-size: 1.4rem; font-weight: 900; letter-spacing: 0.2em; text-align: center; text-transform: uppercase; outline: none;">
+              </div>
+
+              <div id="client-join-error" class="form-feedback error-msg"></div>
+
+              <button type="submit" id="btn-submit-join-room" class="btn btn-network btn-block btn-lg" style="margin-top: 10px;">
+                <span>GABUNG ROOM ➔</span>
+              </button>
+            </form>
+          </div>
+
+          <!-- Client Waiting Area (After Connected) -->
+          <div id="client-waiting-box" class="setup-card text-center hidden">
+            <span class="badge-count" style="margin-bottom: 12px;">TERHUBUNG KE ROOM</span>
+            <h3 class="card-title" id="client-room-title">Room: ----</h3>
+            <div class="waiting-spinner"></div>
+            <p class="card-desc">Menunggu Host mengatur ronde dan memulai permainan...</p>
+            
+            <div class="lobby-players-box" style="margin-top: 18px; text-align: left;">
+              <h4 class="card-title" style="font-size: 0.95rem; margin-bottom: 10px;">Pemain di Room:</h4>
+              <div id="client-lobby-players-list">
+                <!-- Rendered dynamically -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 5. PASS & PLAY SETUP SCREEN ================= -->
       <section id="screen-setup" class="screen">
         <div class="screen-header">
           <button id="btn-back-to-home" class="btn-back" aria-label="Kembali ke Beranda">
@@ -102,7 +283,7 @@
             </svg>
             <span>Kembali</span>
           </button>
-          <h2 class="section-title">Setup Permainan</h2>
+          <h2 class="section-title">Setup 1 Perangkat</h2>
           <div class="header-spacer"></div>
         </div>
 
@@ -142,11 +323,11 @@
               <div class="pill-selector mode-selector" role="radiogroup">
                 <button type="button" class="pill-opt active" data-mode="lps" role="radio" aria-checked="true">
                   <span class="pill-title">🏆 Last Player Standing</span>
-                  <span class="pill-desc">3 Nyawa, yang gugur tereliminasi!</span>
+                  <span class="pill-desc">3 Nyawa, yang kehabisan nyawa tereliminasi!</span>
                 </button>
                 <button type="button" class="pill-opt" data-mode="freeplay" role="radio" aria-checked="false">
                   <span class="pill-title">🎯 Free Play</span>
-                  <span class="pill-desc">Tanpa eliminasi, kumpulkan poin kata!</span>
+                  <span class="pill-desc">Tanpa eliminasi, kumpulkan poin kata terbanyak!</span>
                 </button>
                 <button type="button" class="pill-opt" data-mode="suddendeath" role="radio" aria-checked="false">
                   <span class="pill-title">⚡ Sudden Death</span>
@@ -197,11 +378,10 @@
         </div>
       </section>
 
-      <!-- ================= 3. READY / TURN HANDOFF OVERLAY ================= -->
-      <!-- Fitur wajib pass-and-play: saat giliran berganti, harus ketik 'Mulai' dulu baru waktu jalan! -->
+      <!-- ================= 6. READY / TURN HANDOFF OVERLAY ================= -->
       <section id="screen-ready" class="screen">
         <div class="ready-card-modal">
-          <div class="ready-badge-pill">OPER PERANGKAT 🔄</div>
+          <div class="ready-badge-pill" id="ready-badge-header">OPER PERANGKAT 🔄</div>
           
           <div class="ready-avatar-large" id="ready-player-avatar">P1</div>
           
@@ -223,7 +403,7 @@
             </div>
           </div>
 
-          <p class="ready-prompt-text">
+          <p class="ready-prompt-text" id="ready-prompt-instruction">
             Pastikan perangkat sudah di tanganmu. Waktu <strong>TIDAK AKAN BERJALAN</strong> sebelum kamu menekan tombol di bawah!
           </p>
 
@@ -234,12 +414,15 @@
         </div>
       </section>
 
-      <!-- ================= 4. GAMEPLAY SCREEN ================= -->
+      <!-- ================= 7. GAMEPLAY SCREEN ================= -->
       <section id="screen-game" class="screen">
+        <!-- Multi-Device Turn Status Banner -->
+        <div id="game-multi-turn-banner" class="hidden"></div>
+
         <!-- Game Top Bar -->
         <div class="game-top-bar">
           <div class="turn-indicator">
-            <span class="turn-badge">GILIRAN</span>
+            <span class="turn-badge" id="game-turn-badge">GILIRAN</span>
             <span id="game-active-player-name" class="active-player-name">Pemain 1</span>
           </div>
           <div class="game-top-actions">
@@ -309,7 +492,7 @@
         <!-- Lifeline / Skip Button -->
         <div class="lifeline-bar">
           <button id="btn-use-lifeline" class="btn btn-sm btn-lifeline" title="Bantuan: Ganti Huruf">
-            <span>💡 Bantuan (<span id="lifeline-count">1</span> tersisa)</span>
+            <span>💡 Ganti Huruf (<span id="lifeline-count">1</span> tersisa)</span>
           </button>
         </div>
 
@@ -329,7 +512,7 @@
         </div>
       </section>
 
-      <!-- ================= 5. RESULTS SCREEN ================= -->
+      <!-- ================= 8. RESULTS SCREEN ================= -->
       <section id="screen-results" class="screen">
         <div class="results-header">
           <div class="results-crown">👑</div>
@@ -345,7 +528,7 @@
 
         <!-- Leaderboard Table -->
         <div class="leaderboard-card">
-          <h4 class="leaderboard-title">Papan Skor & Riwayat</h4>
+          <h4 class="leaderboard-title">Papan Skor & Peringkat</h4>
           <div class="leaderboard-list" id="results-leaderboard-list">
             <!-- Rendered dynamically -->
           </div>
@@ -392,15 +575,18 @@
         <div class="modal-body modal-scroll">
           <div class="rule-block">
             <h4>🎯 Aturan Utama</h4>
-            <p>Pemain bermain bergantian pada <strong>satu perangkat yang sama</strong> secara pass-and-play. Kata yang kamu sebutkan <strong>wajib diawali huruf terakhir</strong> dari kata pemain sebelumnya!</p>
+            <p>Kata yang kamu ketik <strong>wajib diawali huruf terakhir</strong> dari kata pemain sebelumnya!</p>
             <div class="example-box">
               Contoh: BUK<strong>U</strong> ➔ <strong>U</strong>LA<strong>R</strong> ➔ <strong>R</strong>OT<strong>I</strong> ➔ <strong>I</strong>KA<strong>N</strong>
             </div>
           </div>
 
           <div class="rule-block">
-            <h4>🔄 Pergantian Giliran Aman (Pass-and-Play)</h4>
-            <p>Saat giliran berganti, layar akan berhenti dan meminta konfirmasi. Oper perangkat ke temanmu. Waktu giliran <strong>baru akan mulai berjalan</strong> setelah temanmu menekan tombol <strong>"MULAI GILIRAN"</strong>!</p>
+            <h4>📱 Dua Cara Bermain</h4>
+            <ul>
+              <li><strong>1 Perangkat (Pass & Play):</strong> Main bergantian di 1 HP/laptop. Waktu tidak akan jalan sebelum tombol "Mulai Giliran" ditekan.</li>
+              <li><strong>Main di HP Masing-Masing (Multi-Device):</strong> Host membuat Room dan membagikan Kode 4 Huruf. Teman-teman bergabung langsung dari browser HP masing-masing!</li>
+            </ul>
           </div>
 
           <div class="rule-block">
@@ -408,7 +594,7 @@
             <ul>
               <li>Kata yang tidak diawali huruf wajib.</li>
               <li>Kata yang sudah pernah digunakan dalam sesi yang sama (anti-duplikat).</li>
-              <li>Kata yang tidak terdapat di dalam dataset kosakata kamus lokal.</li>
+              <li>Kata yang tidak terdapat di dalam dataset kamus kosakata lokal.</li>
               <li>Input kosong, angka, tanda baca, atau lebih dari satu kata.</li>
             </ul>
           </div>
@@ -416,15 +602,15 @@
           <div class="rule-block">
             <h4>🏆 Mode Permainan</h4>
             <ul>
-              <li><strong>Last Player Standing:</strong> Setiap pemain punya 3 nyawa. Salah kata atau waktu habis = kehilangan 1 nyawa. Pemain terakhir yang bertahan menang!</li>
-              <li><strong>Free Play:</strong> Tanpa eliminasi! Setiap kata valid menghasilkan poin. Cocok untuk sesi kasual yang santai.</li>
+              <li><strong>Last Player Standing:</strong> 3 nyawa. Salah kata atau waktu habis = kehilangan 1 nyawa. Pemain terakhir yang bertahan menang!</li>
+              <li><strong>Free Play:</strong> Tanpa eliminasi! Setiap kata valid menghasilkan poin. Cocok untuk sesi santai.</li>
               <li><strong>Sudden Death:</strong> Mode ketegangan tinggi! Hanya 1 nyawa per pemain, sekali salah langsung gugur.</li>
             </ul>
           </div>
 
           <div class="rule-block">
-            <h4>⚡ Tantangan Acak</h4>
-            <p>Jika fitur tantangan diaktifkan, giliran tertentu akan memiliki modifier khusus seperti Kategori Wajib, Waktu Kilat, Larangan Huruf Tertentu, atau Kata Panjang!</p>
+            <h4>⚡ 8 Variasi Tantangan Acak</h4>
+            <p>Jika fitur tantangan diaktifkan, giliran tertentu akan memiliki modifier seru seperti Kategori Wajib, Waktu Kilat, Larangan Huruf, dsb.</p>
           </div>
         </div>
         <div class="modal-footer">

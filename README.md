@@ -1,65 +1,57 @@
 # SAMBUNGIN! — Party Word Chain Game
 
-Game party sambung kata seru berbahasa Indonesia yang dirancang untuk dimainkan bersama oleh beberapa orang secara bergantian pada **satu perangkat** (*pass-and-play local multiplayer*).
+Game party sambung kata seru berbahasa Indonesia dan Inggris yang kini mendukung **dua cara bermain**:
+1. 📱 **1 Perangkat (Pass & Play)**: Dimainkan bergantian pada satu HP / laptop.
+2. 📶 **Multi-Device (HP Masing-Masing)**: Bermain bersama lewat jaringan WebRTC P2P cukup dengan memasukkan **Kode Room 4 Huruf**!
 
 ---
 
-## 🎯 Aturan Permainan
+## 🎯 Cara Bermain di HP Masing-Masing (Multi-Device)
 
-1. **Sambung Kata**: Kata yang kamu ketik harus diawali huruf terakhir dari kata sebelumnya.
-   - Contoh: BUK**U** ➔ **U**LA**R** ➔ **R**OT**I** ➔ **I**KA**N**.
-2. **Pergantian Giliran Terjaga (Turn Handoff)**:
-   - Saat giliran berpindah ke pemain lain, layar konfirmasi akan tampil dan timer **TIDAK** akan berjalan.
-   - Oper perangkat ke temanmu. Waktu baru mulai berjalan setelah tombol **"MULAI GILIRAN SEKARANG"** ditekan!
-3. **Kamus Kosakata Lokal**: Kata divalidasi terhadap dataset kosakata lokal.
-4. **Anti-Duplikat**: Kata yang telah digunakan dalam sesi yang sama tidak dapat dipakai ulang.
-5. **Mode Permainan**:
-   - **Last Player Standing**: Setiap pemain dibekali 3 nyawa. Salah atau waktu habis mengurangi 1 nyawa. Pemain terakhir yang bertahan menang!
-   - **Free Play**: Tanpa eliminasi. Kumpulkan poin kata sebanyak-banyaknya.
-   - **Sudden Death**: Ketegangan tinggi dengan 1 nyawa per pemain. Sekali salah langsung gugur!
-6. **Sistem Tantangan**: Modifier acak seperti *Kategori Wajib*, *Waktu Kilat*, *Larangan Huruf Tertentu*, *Kata Panjang*, dan *Bonus Poin*.
+1. **Untuk Pemain Pertama (Host)**:
+   - Di menu utama, klik tombol ungu: **"MAIN DI HP MASING-MASING"**.
+   - Pilih **"Buat Room Baru (Host)"**.
+   - Masukkan nama Anda, lalu Room akan otomatis dibuat dengan **Kode 4 Karakter** (misalnya: `A7K9`).
+   - Bagikan Kode Room tersebut kepada teman-teman Anda.
+   - Setelah teman Anda bergabung ke dalam Lobby, Host dapat memilih Mode, Durasi Timer, dan Tingkat Tantangan, lalu klik **"MULAI PERMAINAN SEKARANG"**.
+
+2. **Untuk Teman-Teman yang Bergabung (Client / Join)**:
+   - Buka browser di HP masing-masing dan akses alamat game:
+     - Jika berada di Wi-Fi yang sama dengan Host: `http://<IP-Host>:8000/index.html`
+   - Klik **"MAIN DI HP MASING-MASING"** ➔ **"Gabung Room Teman (Join)"**.
+   - Masukkan nama Anda dan **Kode Room** dari Host.
+   - Klik **"GABUNG ROOM"**.
+   - Anda akan masuk ke ruang tunggu (Lobby) hingga Host memulai permainan.
+
+3. **Saat Permainan Berlangsung**:
+   - **Saat giliran Anda**: Layar HP Anda akan menyala dengan notifikasi *"GILIRAN KAMU SEKARANG!"*, tombol Mulai Giliran, kolom input kata aktif, dan keyboard HP otomatis terbuka.
+   - **Saat giliran lawan**: Layar HP Anda menampilkan status *"Menunggu giliran [Nama Teman]..."*, sementara timer hitung mundur, kata sebelumnya, huruf wajib, dan riwayat rantai kata tersinkronisasi secara real-time di semua HP!
+   - Efek suara (*chime* benar, getar, dengung salah, dan selebrasi konfeti juara) berbunyi di semua perangkat!
 
 ---
 
-## 🚀 Cara Menjalankan
+## 📱 Mode 1 Perangkat (Pass & Play)
 
-Game ini dibuat dengan **HTML5, CSS3 murni, dan Vanilla JavaScript (Modular ES6)**, 100% tanpa dependensi framework atau backend, dan dapat berjalan secara offline.
+Tetap tersedia kapan saja bagi yang ingin nongkrong santai berbagi satu HP:
+- Pilih **"1 PERANGKAT (PASS & PLAY)"**.
+- Atur daftar nama pemain.
+- Layar **Turn Handoff** akan menahan timer agar waktu **TIDAK BERJALAN** sebelum HP dioper ke teman dan tombol **"MULAI GILIRAN SEKARANG"** ditekan.
 
-### Pilihan 1: Buka dengan Live Server / Python HTTP Server (Disarankan untuk modul ES6)
-Karena menggunakan modul ES6 (`type="module"`), buka direktori `sambungin-game/` melalui static server lokal:
+---
+
+## 📚 Kamus Kosakata Super Luas
+- **392.181 Kata** (40.000+ Bahasa Indonesia & 350.000+ Bahasa Inggris).
+- Kategori tematik: *Hewan*, *Makanan*, *Tempat*, *Benda*, *Profesi*.
+- Pencarian $\mathcal{O}(1)$ instan tanpa lag.
+
+---
+
+## 🚀 Cara Menjalankan Server Lokal
 
 ```bash
-# Menggunakan Python 3:
-cd sambungin-game
+# Di direktori d:\games:
 python -m http.server 8000
 ```
-Buka browser dan akses: `http://localhost:8000`
 
-### Pilihan 2: Menggunakan Node `npx serve`
-```bash
-cd sambungin-game
-npx -y serve .
-```
-
----
-
-## 📁 Struktur Proyek
-
-```text
-sambungin-game/
-├── index.html               # Struktur antarmuka semantic HTML5
-├── css/
-│   └── style.css            # Desain mobile-first, palet Deep Indigo & Amber Yellow
-├── js/
-│   ├── app.js               # Kontroler UI, routing layar, event handler
-│   ├── game-engine.js       # Mesin logika permainan, giliran, timer single-lifecycle
-│   ├── word-validator.js    # Modul validasi kata & aturan rantai huruf
-│   ├── challenges.js        # 8 mekanik tantangan acak
-│   └── audio.js             # Efek suara Web Audio API tanpa file eksternal
-├── data/
-│   └── words.json           # Kamus kosakata bahasa Indonesia lokal
-├── tests/
-│   ├── test-plan.md         # Rencana pengujian dan kriteria penerimaan
-│   └── test-runner.js       # Skrip pengujian otomatis unit logika
-└── README.md                # Dokumentasi proyek
-```
+- Buka di komputer Host: `http://localhost:8000/index.html`
+- Buka di HP teman (Wi-Fi lokal): `http://192.168.100.134:8000/index.html`

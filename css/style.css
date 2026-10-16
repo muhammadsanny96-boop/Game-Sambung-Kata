@@ -2,6 +2,7 @@
    SAMBUNGIN! — Party Word Chain Game
    Design System: Deep Indigo, Royal Purple & Cyber Amber Accents
    Mobile-First, Tactile, High-Energy Party Aesthetics
+   With WebRTC Multi-Device Room Code Multiplayer Support
    ========================================================================== */
 
 :root {
@@ -76,6 +77,14 @@ html, body {
   overflow-x: hidden;
   user-select: none;
   -webkit-user-select: none;
+}
+
+/* Confetti Canvas Overlay */
+.confetti-canvas {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 99;
 }
 
 /* Background Animated Gradient Orbs */
@@ -251,7 +260,7 @@ html, body {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 24px 8px 20px;
+  padding: 24px 8px 16px;
   margin-top: auto;
 }
 
@@ -266,7 +275,7 @@ html, body {
   background: rgba(251, 191, 36, 0.12);
   color: var(--color-accent);
   border: 1px solid rgba(251, 191, 36, 0.3);
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 
 .dot-pulse {
@@ -284,7 +293,7 @@ html, body {
 }
 
 .hero-logo-box {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .hero-title {
@@ -319,22 +328,22 @@ html, body {
   justify-content: center;
   gap: 6px;
   flex-wrap: wrap;
-  padding: 14px 16px;
+  padding: 12px 14px;
   border-radius: var(--radius-lg);
   background: var(--bg-card);
   border: 1px solid var(--bg-card-border);
   backdrop-filter: blur(12px);
   box-shadow: var(--shadow-md);
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .chain-chip {
-  padding: 6px 10px;
+  padding: 5px 9px;
   background: rgba(15, 23, 42, 0.8);
   border-radius: var(--radius-sm);
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   letter-spacing: 0.08em;
   color: var(--text-main);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -362,6 +371,18 @@ html, body {
   margin-top: 10px;
 }
 
+.btn-network {
+  background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%);
+  color: #FFFFFF;
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+}
+
+.btn-network:hover {
+  background: linear-gradient(135deg, #9333EA 0%, #4F46E5 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(139, 92, 246, 0.6);
+}
+
 .home-features-pill {
   display: flex;
   align-items: center;
@@ -370,11 +391,142 @@ html, body {
   font-size: 0.75rem;
   color: var(--text-dim);
   font-weight: 600;
-  margin-top: 24px;
+  margin-top: 20px;
 }
 
 .feature-divider {
   opacity: 0.4;
+}
+
+/* ================= MULTIPLAYER ROOM SELECTION & LOBBY ================= */
+.room-code-card {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%);
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius-xl);
+  padding: 22px 16px;
+  text-align: center;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-glow-primary);
+}
+
+.room-code-label {
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--color-primary-light);
+  margin-bottom: 6px;
+}
+
+.room-code-display {
+  font-family: var(--font-display);
+  font-size: 3.2rem;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  color: var(--color-accent);
+  text-shadow: 0 0 20px var(--color-accent-glow);
+  margin-bottom: 8px;
+}
+
+.btn-copy-code {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--text-main);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-copy-code:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: var(--color-accent);
+}
+
+.lobby-players-box {
+  background: var(--bg-card);
+  border: 1px solid var(--bg-card-border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.lobby-player-pill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  margin-bottom: 8px;
+}
+
+.lobby-player-role {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: rgba(251, 191, 36, 0.2);
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent);
+}
+
+.waiting-spinner {
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(99, 102, 241, 0.2);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spin 1s infinite linear;
+  margin: 14px auto;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* In-game network indicator */
+.network-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--color-success);
+  border: 1px solid var(--color-success);
+}
+
+/* Turn prompt for multi-device */
+.turn-personal-prompt {
+  background: linear-gradient(90deg, rgba(251, 191, 36, 0.15) 0%, rgba(99, 102, 241, 0.15) 100%);
+  border: 1.5px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  text-align: center;
+  margin-bottom: 12px;
+  font-weight: 800;
+  color: var(--color-accent);
+  animation: urgentPulse 1.8s infinite;
+}
+
+.turn-spectator-prompt {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  text-align: center;
+  margin-bottom: 12px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
 }
 
 /* ================= 2. SETUP SCREEN ================= */
@@ -1130,6 +1282,12 @@ html, body {
   box-shadow: 0 0 0 4px var(--color-accent-glow);
 }
 
+.input-wrapper input:disabled {
+  opacity: 0.5;
+  background: rgba(15, 23, 42, 0.4);
+  cursor: not-allowed;
+}
+
 .btn-submit {
   padding: 0 20px;
   background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-hover) 100%);
@@ -1144,7 +1302,13 @@ html, body {
   transition: all 0.15s ease;
 }
 
-.btn-submit:active {
+.btn-submit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-submit:active:not(:disabled) {
   transform: translateY(2px);
   box-shadow: 0 2px 6px var(--color-accent-glow);
 }
