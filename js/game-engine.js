@@ -1,7 +1,7 @@
 /**
  * SAMBUNGIN! — Core Game Engine
  * Manages game state, single-timer lifecycle, pass-and-play turn handoff,
- * scoring, lives, player elimination, and game completion.
+ * seamless auto-turn for multiplayer, scoring, lives, and player elimination.
  */
 
 export class GameEngine {
@@ -16,7 +16,8 @@ export class GameEngine {
       timerDuration: 10,     // 5, 10, 15, 20
       initialLives: 3,       // 1, 3, 5
       challengeDifficulty: 'normal', // 'off', 'casual', 'normal', 'chaos'
-      freePlayMaxRounds: 20
+      freePlayMaxRounds: 20,
+      autoStartTurn: false   // If true (Multi-device), turns start immediately without 'Ready' pause!
     };
 
     // State Variables
@@ -40,8 +41,8 @@ export class GameEngine {
     // Callbacks for UI updates
     this.onStateChange = null;
     this.onTick = null;
-    this.onTurnReady = null;      // Called when device should be handed to next player
-    this.onTurnStart = null;      // Called when player hits "MULAI GILIRAN"
+    this.onTurnReady = null;      // Called when device should be handed over (Pass & Play)
+    this.onTurnStart = null;      // Called when turn starts actively (Auto or Manual)
     this.onWordAccepted = null;
     this.onWordRejected = null;
     this.onPlayerEliminated = null;
@@ -79,13 +80,14 @@ export class GameEngine {
     this.usedWords.add(this.validator.normalize(this.currentWord));
     this.requiredLetter = this.validator.getLastLetter(this.currentWord);
 
-    // Enter READY state for the first player (Turn handoff)
+    // Prepare first turn
     this.prepareTurn();
   }
 
   /**
-   * Prepares the turn handoff interstitial screen.
-   * Timer stays FROZEN until player explicitly clicks "MULAI GILIRAN".
+   * Prepares the turn.
+   * If autoStartTurn is true (Multiplayer), automatically starts turn countdown!
+   * If autoStartTurn is false (Pass & Play), pauses in READY state for device handoff.
    */
   prepareTurn() {
     this.stopTimer();
@@ -98,7 +100,6 @@ export class GameEngine {
       return;
     }
 
-    // Skip eliminated players if current is eliminated
     if (this.players[this.currentPlayerIndex].status === 'ELIMINATED') {
       let nextIndex = (this.currentPlayerIndex + 1) % this.players.length;
       let loops = 0;
@@ -128,22 +129,40 @@ export class GameEngine {
     }
 
     this.remainingTime = this.turnDuration;
-    this.state = 'READY';
 
-    if (this.onTurnReady) {
-      this.onTurnReady({
-        player,
-        requiredLetter: this.requiredLetter,
-        prevWord: this.currentWord,
-        challenge: this.activeChallenge,
-        turnDuration: this.turnDuration
-      });
+    // MULTIPLAYER AUTO-TURN LOGIC:
+    // If autoStartTurn is enabled, do NOT pause for ready button — start active turn immediately!
+    if (this.config.autoStartTurn) {
+      this.state = 'PLAYING';
+      this.startTimer();
+      if (this.onTurnStart) {
+        this.onTurnStart({
+          player,
+          remainingTime: this.remainingTime,
+          turnDuration: this.turnDuration,
+          requiredLetter: this.requiredLetter,
+          prevWord: this.currentWord,
+          challenge: this.activeChallenge,
+          isAutoTurn: true
+        });
+      }
+    } else {
+      // Pass & Play Mode: Wait in READY state until button clicked
+      this.state = 'READY';
+      if (this.onTurnReady) {
+        this.onTurnReady({
+          player,
+          requiredLetter: this.requiredLetter,
+          prevWord: this.currentWord,
+          challenge: this.activeChallenge,
+          turnDuration: this.turnDuration
+        });
+      }
     }
   }
 
   /**
-   * Called when player presses "MULAI GILIRAN" on the ready screen.
-   * Starts countdown timer and activates PLAYING state!
+   * Called manually when player presses "MULAI GILIRAN" (in Pass & Play mode).
    */
   startActiveTurn() {
     if (this.state !== 'READY') return;
@@ -159,7 +178,8 @@ export class GameEngine {
         turnDuration: this.turnDuration,
         requiredLetter: this.requiredLetter,
         prevWord: this.currentWord,
-        challenge: this.activeChallenge
+        challenge: this.activeChallenge,
+        isAutoTurn: false
       });
     }
   }
@@ -287,10 +307,11 @@ export class GameEngine {
       });
     }
 
-    // Advance to next active player
+    // Advance to next active player smoothly
+    const advanceDelay = this.config.autoStartTurn ? 500 : 600;
     setTimeout(() => {
       this.advanceTurn();
-    }, 600);
+    }, advanceDelay);
   }
 
   /**
@@ -331,7 +352,7 @@ export class GameEngine {
     if (!isOver) {
       setTimeout(() => {
         this.advanceTurn();
-      }, 1000);
+      }, 900);
     }
   }
 

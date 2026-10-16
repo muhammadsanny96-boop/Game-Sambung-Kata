@@ -236,6 +236,7 @@ html, body {
   display: none;
   flex-direction: column;
   flex: 1;
+  position: relative;
   animation: fadeInScreen 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
@@ -985,6 +986,85 @@ html, body {
 }
 
 /* ================= 4. GAMEPLAY SCREEN ================= */
+/* Prominent Status Banner: Your Turn vs Spectating */
+.turn-banner-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 12px 16px;
+  border-radius: var(--radius-lg);
+  margin-bottom: 12px;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.turn-banner-box .banner-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 3px 12px;
+  border-radius: var(--radius-full);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.turn-banner-box .banner-title {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 850;
+  margin: 0;
+  line-height: 1.35;
+}
+
+/* Banner: Active Turn (My Turn) */
+.turn-banner-box.banner-active-turn {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.22) 0%, rgba(245, 158, 11, 0.3) 100%);
+  border: 2px solid var(--color-accent);
+  box-shadow: 0 0 24px var(--color-accent-glow);
+  animation: bannerGlowPulse 2s infinite ease-in-out;
+}
+
+.turn-banner-box.banner-active-turn .banner-badge {
+  background: var(--color-accent);
+  color: var(--text-inverted);
+}
+
+.turn-banner-box.banner-active-turn .banner-title {
+  color: var(--color-accent);
+}
+
+@keyframes bannerGlowPulse {
+  0%, 100% {
+    box-shadow: 0 0 16px var(--color-accent-glow);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 32px rgba(251, 191, 36, 0.6);
+    transform: scale(1.015);
+  }
+}
+
+/* Banner: Spectator (Waiting for opponent) */
+.turn-banner-box.banner-spectator {
+  background: rgba(30, 27, 75, 0.6);
+  border: 1.5px solid rgba(99, 102, 241, 0.35);
+  box-shadow: var(--shadow-sm);
+}
+
+.turn-banner-box.banner-spectator .banner-badge {
+  background: rgba(99, 102, 241, 0.25);
+  color: var(--color-primary-light);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+}
+
+.turn-banner-box.banner-spectator .banner-title {
+  color: var(--text-main);
+}
+
 .game-top-bar {
   display: flex;
   align-items: center;
@@ -1288,6 +1368,56 @@ html, body {
   cursor: not-allowed;
 }
 
+/* Auto-Prefix Word Input Capsule */
+.input-wrapper.with-prefix {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  background: rgba(15, 23, 42, 0.85);
+  border: 2px solid var(--bg-card-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.input-wrapper.with-prefix:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 4px var(--color-accent-glow);
+}
+
+.input-prefix-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-hover) 100%);
+  color: var(--text-inverted);
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 900;
+  border-right: 2px solid rgba(0, 0, 0, 0.25);
+  user-select: none;
+  flex-shrink: 0;
+  min-width: 52px;
+}
+
+.input-wrapper.with-prefix input {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding: 14px 14px;
+}
+
+.input-wrapper.with-prefix input:focus {
+  border: none;
+  box-shadow: none;
+}
+
+.input-wrapper.with-prefix .btn-submit {
+  border-radius: 0;
+  flex-shrink: 0;
+}
+
 .btn-submit {
   padding: 0 20px;
   background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-hover) 100%);
@@ -1340,6 +1470,117 @@ html, body {
   0%, 100% { transform: translateX(0); }
   20%, 60% { transform: translateX(-6px); }
   40%, 80% { transform: translateX(6px); }
+}
+
+/* Spectator Reaction Box (Waiting for turn in Multi-Device) */
+.spectator-reaction-box {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1.5px dashed rgba(99, 102, 241, 0.45);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  text-align: center;
+  margin-bottom: 12px;
+  animation: fadeIn 0.3s ease;
+}
+
+.spectator-status-text {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.reaction-emojis-row {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-emote {
+  font-size: 1.6rem;
+  background: rgba(30, 27, 75, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-emote:hover {
+  transform: scale(1.25);
+  background: rgba(99, 102, 241, 0.4);
+  border-color: var(--color-primary-light);
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.45);
+}
+
+.btn-emote:active {
+  transform: scale(0.92);
+}
+
+/* Floating Reactions Animation Layer */
+.floating-emotes-container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 60;
+}
+
+.floating-emote {
+  position: absolute;
+  bottom: 100px;
+  font-size: 2.6rem;
+  user-select: none;
+  animation: floatUpFade 2.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.6));
+}
+
+@keyframes floatUpFade {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.6) rotate(0deg);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(-20px) scale(1.3) rotate(-8deg);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-90px) scale(1.1) rotate(6deg);
+  }
+  80% {
+    opacity: 0.85;
+    transform: translateY(-200px) scale(1) rotate(-4deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-300px) scale(0.7) rotate(12deg);
+  }
+}
+
+/* WhatsApp Share Button */
+.btn-share-wa {
+  background: #25D366;
+  color: #FFFFFF;
+  font-weight: 800;
+  border: none;
+  box-shadow: 0 4px 14px rgba(37, 211, 102, 0.35);
+  transition: all 0.2s ease;
+}
+
+.btn-share-wa:hover {
+  background: #20BA5A;
+  box-shadow: 0 6px 20px rgba(37, 211, 102, 0.5);
+  transform: translateY(-2px);
+  color: #FFFFFF;
+}
+
+.btn-share-wa:active {
+  transform: translateY(1px);
 }
 
 /* Lifeline Bar */

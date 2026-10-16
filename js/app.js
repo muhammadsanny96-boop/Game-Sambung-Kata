@@ -43,7 +43,8 @@ class SambunginApp {
     this.prefs = {
       sound: true,
       volume: 80,
-      animations: true
+      animations: true,
+      vibration: true
     };
 
     this.confettiAnimationId = null;
@@ -60,6 +61,18 @@ class SambunginApp {
   async init() {
     await this.validator.loadDataset('data/words.json');
     console.log(`[SAMBUNGIN] Kamus siap. ${this.validator.wordsSet.size} kosakata aktif.`);
+
+    // Check for direct join URL parameter (e.g. ?room=ABCD)
+    const roomFromUrl = NetworkManager.getRoomFromUrl();
+    if (roomFromUrl) {
+      this.gameSessionType = 'NETWORK';
+      this.showScreen('lobbyClient');
+      this.inputClientRoomCode.value = roomFromUrl.toUpperCase();
+      this.clientConnectBox.classList.remove('hidden');
+      this.clientWaitingBox.classList.add('hidden');
+      this.showToast(`Kode room ${roomFromUrl.toUpperCase()} terdeteksi otomatis!`);
+      setTimeout(() => this.inputClientName.focus(), 250);
+    }
   }
 
   cacheDom() {
@@ -103,6 +116,8 @@ class SambunginApp {
     this.btnLeaveHostRoom = document.getElementById('btn-leave-host-room');
     this.hostRoomCodeDisplay = document.getElementById('host-room-code-display');
     this.btnCopyRoomCode = document.getElementById('btn-copy-room-code');
+    this.btnShareWa = document.getElementById('btn-share-wa');
+    this.btnCopyLink = document.getElementById('btn-copy-link');
     this.hostPlayerCountBadge = document.getElementById('host-player-count-badge');
     this.hostLobbyPlayersList = document.getElementById('host-lobby-players-list');
     this.hostValidationMsg = document.getElementById('host-validation-msg');
@@ -140,8 +155,9 @@ class SambunginApp {
     this.btnReadyStart = document.getElementById('btn-ready-start');
     this.readyPromptInstruction = document.getElementById('ready-prompt-instruction');
 
-    // Gameplay elements
-    this.gameMultiTurnBanner = document.getElementById('game-multi-turn-banner');
+    // Gameplay Arena elements
+    this.gameTurnBanner = document.getElementById('game-turn-banner');
+    this.bannerMainText = document.getElementById('banner-main-text');
     this.gameActivePlayerName = document.getElementById('game-active-player-name');
     this.gameTurnBadge = document.getElementById('game-turn-badge');
     this.gamePlayerLivesBadge = document.getElementById('game-player-lives-badge');
@@ -159,9 +175,14 @@ class SambunginApp {
     this.gamePrevWord = document.getElementById('game-prev-word');
     this.gameRequiredLetter = document.getElementById('game-required-letter');
     this.formSubmitWord = document.getElementById('form-submit-word');
+    this.inputPrefixBadge = document.getElementById('input-prefix-badge');
+    this.inputPrefixLetter = document.getElementById('input-prefix-letter');
     this.inputWord = document.getElementById('input-word');
     this.btnSubmitWord = document.getElementById('btn-submit-word');
     this.wordFeedbackMsg = document.getElementById('word-feedback-msg');
+    this.spectatorReactionBox = document.getElementById('spectator-reaction-box');
+    this.spectatorStatusText = document.getElementById('spectator-status-text');
+    this.floatingEmotesContainer = document.getElementById('floating-emotes-container');
     this.btnUseLifeline = document.getElementById('btn-use-lifeline');
     this.lifelineCount = document.getElementById('lifeline-count');
     this.wordHistoryList = document.getElementById('word-history-list');
@@ -189,6 +210,7 @@ class SambunginApp {
     this.settingSound = document.getElementById('setting-sound');
     this.settingVolume = document.getElementById('setting-volume');
     this.settingAnimations = document.getElementById('setting-animations');
+    this.settingVibration = document.getElementById('setting-vibration');
     this.btnResetStorage = document.getElementById('btn-reset-storage');
     this.btnCloseSettings = document.getElementById('btn-close-settings');
     this.btnCloseSettingsBottom = document.getElementById('btn-close-settings-bottom');
@@ -224,9 +246,41 @@ class SambunginApp {
       this.audio.setVolume(this.prefs.volume);
 
       this.settingAnimations.checked = this.prefs.animations;
+
+      if (this.settingVibration) {
+        this.settingVibration.checked = (this.prefs.vibration !== false);
+      }
     } catch (e) {
       console.warn('LocalStorage error:', e);
     }
+  }
+
+  triggerHaptic(type = 'turn') {
+    if (!this.prefs.vibration || !('vibrate' in navigator)) return;
+    try {
+      if (type === 'turn') {
+        navigator.vibrate([70, 40, 70]);
+      } else if (type === 'critical') {
+        navigator.vibrate(35);
+      } else if (type === 'error') {
+        navigator.vibrate([80, 40, 80]);
+      } else if (type === 'correct') {
+        navigator.vibrate(50);
+      }
+    } catch (e) {}
+  }
+
+  triggerFloatingEmote(emoji) {
+    if (!this.floatingEmotesContainer) return;
+    const el = document.createElement('div');
+    el.className = 'floating-emote';
+    el.textContent = emoji;
+    const randomLeft = Math.floor(Math.random() * 65) + 15;
+    el.style.left = `${randomLeft}%`;
+    this.floatingEmotesContainer.appendChild(el);
+    setTimeout(() => {
+      el.remove();
+    }, 2300);
   }
 
   saveData() {
@@ -311,6 +365,13 @@ class SambunginApp {
       this.prefs.animations = e.target.checked;
       this.saveData();
     });
+
+    if (this.settingVibration) {
+      this.settingVibration.addEventListener('change', (e) => {
+        this.prefs.vibration = e.target.checked;
+        this.saveData();
+      });
+    }
 
     this.btnResetStorage.addEventListener('click', () => {
       if (confirm('Yakin ingin mereset data pemain dan setelan?')) {
@@ -397,6 +458,42 @@ class SambunginApp {
           this.showToast(`Kode Room: ${this.network.roomCode}`);
         });
       }
+    });
+
+    if (this.btnShareWa) {
+      this.btnShareWa.addEventListener('click', () => {
+        this.audio.playClick();
+        const code = this.network.roomCode || '';
+        const shareUrl = `${window.location.origin}${window.location.pathname}?room=${code}`;
+        const msg = `Yuk mabar SAMBUNGIN! Game party sambung kata seru bareng aku! 🎮🔥\n\nKlik link ini untuk langsung gabung room:\n${shareUrl}\n\nAtau masukkan Kode Room: ${code}`;
+        const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+        window.open(waUrl, '_blank');
+      });
+    }
+
+    if (this.btnCopyLink) {
+      this.btnCopyLink.addEventListener('click', () => {
+        this.audio.playClick();
+        const code = this.network.roomCode || '';
+        const shareUrl = `${window.location.origin}${window.location.pathname}?room=${code}`;
+        navigator.clipboard.writeText(shareUrl).then(() => {
+          this.showToast('Link gabung langsung berhasil disalin!');
+        }).catch(() => {
+          this.showToast(`Link: ${shareUrl}`);
+        });
+      });
+    }
+
+    // Reaction Emote Buttons
+    document.querySelectorAll('.btn-emote').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const emoji = btn.dataset.emoji || btn.textContent.trim();
+        this.audio.playPop();
+        this.triggerFloatingEmote(emoji);
+        if (this.gameSessionType === 'NETWORK') {
+          this.network.sendReaction(emoji);
+        }
+      });
     });
 
     this.btnLeaveHostRoom.addEventListener('click', () => {
@@ -556,23 +653,25 @@ class SambunginApp {
 
   setupEngineHooks() {
     this.engine.onTurnReady = (data) => {
+      if (this.gameSessionType === 'NETWORK') {
+        // Multi-device: NEVER pause or show screen-ready!
+        // Host immediately triggers active turn
+        if (this.network.role === 'HOST') {
+          this.engine.startActiveTurn();
+        }
+        return;
+      }
+
+      // Pass & Play (1 HP): Show ready overlay for safe physical handoff
       this.renderReadyScreen(data);
       this.showScreen('ready');
-
-      if (this.gameSessionType === 'NETWORK' && this.network.role === 'HOST') {
-        this.network.broadcast('REMOTE_TURN_READY', {
-          player: data.player,
-          requiredLetter: data.requiredLetter,
-          prevWord: data.prevWord,
-          challenge: data.challenge,
-          turnDuration: data.turnDuration
-        });
-      }
     };
 
     this.engine.onTurnStart = (data) => {
+      this.showScreen('game');
       this.updateGameArena();
       this.renderMiniRoster();
+      this.updateTurnActiveState(data.player, data.requiredLetter);
 
       if (this.gameSessionType === 'NETWORK' && this.network.role === 'HOST') {
         this.network.broadcast('REMOTE_TURN_START', {
@@ -589,6 +688,9 @@ class SambunginApp {
 
     this.engine.onTick = (seconds, fraction) => {
       this.updateTimerDisplay(seconds, fraction);
+      if (seconds <= 3) {
+        this.triggerHaptic('critical');
+      }
 
       if (this.gameSessionType === 'NETWORK' && this.network.role === 'HOST') {
         this.network.broadcast('REMOTE_TICK', { seconds, fraction });
@@ -600,6 +702,7 @@ class SambunginApp {
       this.renderWordHistory();
       this.renderMiniRoster();
       this.inputWord.value = '';
+      this.triggerHaptic('correct');
 
       if (this.gameSessionType === 'NETWORK' && this.network.role === 'HOST') {
         this.network.broadcast('REMOTE_WORD_ACCEPTED', {
@@ -613,6 +716,7 @@ class SambunginApp {
     this.engine.onWordRejected = (data) => {
       this.setWordFeedback(data.reason, false);
       this.renderMiniRoster();
+      this.triggerHaptic('error');
 
       if (data.eliminated) {
         this.showToast(`💀 ${data.player.name} Tereliminasi!`);
@@ -682,12 +786,6 @@ class SambunginApp {
             this.network.sendToHost('WORD_ERROR_FEEDBACK', { message: res.message });
           }
         }
-      } else if (type === 'CLIENT_READY_TO_START') {
-        const currentActive = this.engine.getCurrentPlayer();
-        if (currentActive && currentActive.id === senderPeerId) {
-          this.engine.startActiveTurn();
-          this.network.broadcast('REMOTE_START_ACTIVE_TURN', {});
-        }
       } else if (type === 'CLIENT_USE_LIFELINE') {
         const currentActive = this.engine.getCurrentPlayer();
         if (currentActive && currentActive.id === senderPeerId) {
@@ -700,6 +798,11 @@ class SambunginApp {
             });
           }
         }
+      } else if (type === 'REACTION_EMOTE') {
+        this.triggerFloatingEmote(payload.emoji);
+        this.audio.playPop();
+        // Relay reaction to all other connected clients
+        this.network.broadcast('REACTION_EMOTE', payload, senderPeerId);
       }
     }
 
@@ -716,17 +819,8 @@ class SambunginApp {
           this.showToast('Game dimulai!');
           break;
 
-        case 'REMOTE_TURN_READY':
-          this.renderReadyScreen(payload);
-          this.showScreen('ready');
-          break;
-
         case 'REMOTE_TURN_START':
           this.handleClientTurnStart(payload);
-          break;
-
-        case 'REMOTE_START_ACTIVE_TURN':
-          this.showScreen('game');
           break;
 
         case 'REMOTE_TICK':
@@ -738,12 +832,14 @@ class SambunginApp {
           this.setWordFeedback(`Benar! +${payload.data.points} Poin`, true);
           this.renderClientWordHistory(payload.history);
           this.renderClientMiniRoster(payload.players);
+          this.triggerHaptic('correct');
           break;
 
         case 'REMOTE_WORD_REJECTED':
           this.audio.playError();
           this.setWordFeedback(payload.data.reason, false);
           this.renderClientMiniRoster(payload.players);
+          this.triggerHaptic('error');
           if (payload.data.eliminated) {
             this.showToast(`💀 ${payload.data.player.name} Tereliminasi!`);
           }
@@ -751,7 +847,15 @@ class SambunginApp {
 
         case 'REMOTE_ARENA_SYNC':
           this.gameRequiredLetter.textContent = payload.requiredLetter.toUpperCase();
+          if (this.inputPrefixLetter) {
+            this.inputPrefixLetter.textContent = payload.requiredLetter.toUpperCase();
+          }
           this.lifelineCount.textContent = payload.lifelines;
+          break;
+
+        case 'REACTION_EMOTE':
+          this.triggerFloatingEmote(payload.emoji);
+          this.audio.playPop();
           break;
 
         case 'REMOTE_GAME_OVER':
@@ -853,7 +957,8 @@ class SambunginApp {
       mode: this.setupConfig.mode,
       timerDuration: this.setupConfig.timer,
       initialLives: this.setupConfig.lives,
-      challengeDifficulty: this.setupConfig.challenge
+      challengeDifficulty: this.setupConfig.challenge,
+      autoStartTurn: true
     });
   }
 
@@ -906,38 +1011,19 @@ class SambunginApp {
   handleClientTurnStart(payload) {
     this.showScreen('game');
     const { player, requiredLetter, prevWord, challenge, players } = payload;
-    const isMyTurn = (player.id === this.myNetworkId);
 
     this.gameActivePlayerName.textContent = player.name;
 
-    // Multi-Device Turn Banner
-    if (isMyTurn) {
-      this.gameMultiTurnBanner.className = 'turn-personal-prompt';
-      this.gameMultiTurnBanner.textContent = '🔥 GILIRAN KAMU SEKARANG! KETIK JAWABANMU!';
-      this.inputWord.disabled = false;
-      this.inputWord.placeholder = 'Ketik jawaban kata...';
-      this.btnSubmitWord.disabled = false;
-      this.btnUseLifeline.disabled = false;
-      setTimeout(() => this.inputWord.focus(), 150);
-    } else {
-      this.gameMultiTurnBanner.className = 'turn-spectator-prompt';
-      this.gameMultiTurnBanner.textContent = `⏳ Menunggu giliran ${player.name} menjawab...`;
-      this.inputWord.disabled = true;
-      this.inputWord.placeholder = `Giliran ${player.name}...`;
-      this.btnSubmitWord.disabled = true;
-      this.btnUseLifeline.disabled = true;
-    }
-
     // Previous word & required letter
-    if (prevWord.length > 1) {
+    if (prevWord && prevWord.length > 1) {
       const stem = prevWord.slice(0, -1);
       const last = prevWord.slice(-1);
       this.gamePrevWord.innerHTML = `<span class="prev-stem">${escapeHtml(stem.toUpperCase())}</span><span class="prev-last-char">${escapeHtml(last.toUpperCase())}</span>`;
     } else {
-      this.gamePrevWord.innerHTML = `<span class="prev-last-char">${escapeHtml(prevWord.toUpperCase())}</span>`;
+      this.gamePrevWord.innerHTML = `<span class="prev-last-char">${escapeHtml((prevWord || '').toUpperCase())}</span>`;
     }
 
-    this.gameRequiredLetter.textContent = requiredLetter.toUpperCase();
+    this.gameRequiredLetter.textContent = (requiredLetter || '').toUpperCase();
 
     // Challenge Banner
     if (challenge) {
@@ -949,6 +1035,7 @@ class SambunginApp {
       this.gameChallengeBanner.classList.add('hidden');
     }
 
+    this.updateTurnActiveState(player, requiredLetter);
     this.renderClientMiniRoster(players);
   }
 
@@ -1164,12 +1251,79 @@ class SambunginApp {
     }
 
     this.gameRequiredLetter.textContent = this.engine.requiredLetter.toUpperCase();
+    if (this.inputPrefixLetter) {
+      this.inputPrefixLetter.textContent = this.engine.requiredLetter.toUpperCase();
+    }
 
     this.lifelineCount.textContent = player.lifelines;
     this.btnUseLifeline.disabled = (player.lifelines <= 0 && !(challenge && challenge.freeLifeline));
 
     this.wordFeedbackMsg.textContent = '';
     this.wordFeedbackMsg.className = 'word-feedback';
+
+    this.updateTurnActiveState(player, this.engine.requiredLetter);
+  }
+
+  updateTurnActiveState(player, requiredLetter) {
+    if (!player) return;
+
+    const isMyTurn = (this.gameSessionType === 'LOCAL' || player.id === this.myNetworkId);
+    const req = (requiredLetter || '').toUpperCase();
+
+    // Update auto-prefix badge
+    if (this.inputPrefixLetter) {
+      this.inputPrefixLetter.textContent = req;
+    }
+
+    if (this.gameTurnBanner && this.bannerMainText) {
+      const badgeEl = this.gameTurnBanner.querySelector('.banner-badge');
+      if (isMyTurn) {
+        this.gameTurnBanner.className = 'turn-banner-box banner-active-turn';
+        if (badgeEl) badgeEl.textContent = '🔥 GILIRAN KAMU!';
+        this.bannerMainText.textContent = `Ketik kata berawalan ${req}!`;
+      } else {
+        this.gameTurnBanner.className = 'turn-banner-box banner-spectator';
+        if (badgeEl) badgeEl.textContent = '👀 SEDANG MENONTON';
+        this.bannerMainText.textContent = `Menunggu ${player.name} berpikir...`;
+      }
+    }
+
+    // Toggle Input form vs Spectator reaction box
+    if (isMyTurn) {
+      if (this.formSubmitWord) this.formSubmitWord.classList.remove('hidden');
+      if (this.spectatorReactionBox) this.spectatorReactionBox.classList.add('hidden');
+      this.inputWord.disabled = false;
+      this.inputWord.value = '';
+      this.inputWord.placeholder = 'Ketik kelanjutannya...';
+      this.btnSubmitWord.disabled = false;
+      this.btnUseLifeline.disabled = (player.lifelines <= 0);
+      this.triggerHaptic('turn');
+      setTimeout(() => {
+        if (this.inputWord) this.inputWord.focus();
+      }, 100);
+    } else {
+      if (this.formSubmitWord) this.formSubmitWord.classList.add('hidden');
+      if (this.spectatorReactionBox) {
+        this.spectatorReactionBox.classList.remove('hidden');
+        if (this.spectatorStatusText) {
+          this.spectatorStatusText.innerHTML = `<span>⏳ Giliran <strong>${escapeHtml(player.name)}</strong> (${player.lives || 0}❤️). Beri reaksi:</span>`;
+        }
+      }
+      this.inputWord.disabled = true;
+      this.btnSubmitWord.disabled = true;
+      this.btnUseLifeline.disabled = true;
+    }
+  }
+
+  resolveSubmittedWord(raw, reqLetter) {
+    if (!raw) return '';
+    const clean = raw.trim().toLowerCase();
+    const req = (reqLetter || '').trim().toLowerCase();
+    if (!req) return clean;
+    if (clean.startsWith(req)) {
+      return clean;
+    }
+    return req + clean;
   }
 
   updateTimerDisplay(seconds, fraction) {
@@ -1191,9 +1345,13 @@ class SambunginApp {
 
   handleSubmitWord() {
     const raw = this.inputWord.value;
+    const reqLetter = (this.engine && this.engine.requiredLetter)
+      ? this.engine.requiredLetter
+      : (this.gameRequiredLetter ? this.gameRequiredLetter.textContent : '');
+    const resolvedWord = this.resolveSubmittedWord(raw, reqLetter);
 
     if (this.gameSessionType === 'LOCAL') {
-      const res = this.engine.submitWord(raw);
+      const res = this.engine.submitWord(resolvedWord);
       if (res.handled) {
         if (res.success) {
           this.inputWord.blur();
@@ -1204,14 +1362,14 @@ class SambunginApp {
       }
     } else if (this.gameSessionType === 'NETWORK') {
       if (this.network.role === 'HOST') {
-        const res = this.engine.submitWord(raw);
+        const res = this.engine.submitWord(resolvedWord);
         if (!res.success) {
           this.setWordFeedback(res.message, false);
           this.inputWord.select();
         }
       } else {
-        // Send word to Host for authoritative validation
-        this.network.sendToHost('SUBMIT_WORD', { word: raw });
+        // Send resolved word to Host for authoritative validation
+        this.network.sendToHost('SUBMIT_WORD', { word: resolvedWord });
       }
     }
   }

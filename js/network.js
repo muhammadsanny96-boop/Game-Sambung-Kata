@@ -1,6 +1,6 @@
 /**
  * SAMBUNGIN! — WebRTC Peer-to-Peer Network Manager
- * Enables multi-device gameplay using PeerJS DataChannels.
+ * Enables seamless multi-device gameplay using PeerJS DataChannels.
  * Allows one device to be the HOST and other devices to JOIN via a simple Room Code.
  */
 
@@ -21,6 +21,18 @@ export class NetworkManager {
     this.onPlayerLeft = null;
     this.onMessage = null;
     this.onError = null;
+  }
+
+  /**
+   * Checks if URL has ?room=CODE parameter
+   */
+  static getRoomFromUrl() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('room') ? params.get('room').toUpperCase().trim() : null;
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -68,7 +80,6 @@ export class NetworkManager {
 
       this.peer.on('error', (err) => {
         console.error('[P2P HOST ERROR]', err);
-        // If room code conflict, retry with new code
         if (err.type === 'unavailable-id') {
           this.peer.destroy();
           this.createRoom(hostName).then(resolve).catch(reject);
@@ -127,6 +138,12 @@ export class NetworkManager {
 
       if (this.onPlayerJoined) {
         this.onPlayerJoined(playerObj);
+      }
+    } else if (data.type === 'REACTION_EMOTE') {
+      // Re-broadcast reaction emote to all other connected clients
+      this.broadcast('REACTION_EMOTE', data.payload);
+      if (this.onMessage) {
+        this.onMessage(data.type, data.payload, conn.peer);
       }
     } else {
       // Forward gameplay action to GameEngine on Host
@@ -224,6 +241,24 @@ export class NetworkManager {
   sendToHost(type, payload = {}) {
     if (this.role !== 'CLIENT' || !this.hostConn || !this.hostConn.open) return;
     this.hostConn.send({ type, payload });
+  }
+
+  /**
+   * Sends reaction emote (Host broadcasts to all, Client sends to Host to broadcast).
+   */
+  sendReaction(emoji) {
+    const payload = { emoji, sender: this.myName };
+    if (this.role === 'HOST') {
+      this.broadcast('REACTION_EMOTE', payload);
+      if (this.onMessage) {
+        this.onMessage('REACTION_EMOTE', payload, this.myPeerId);
+      }
+    } else if (this.role === 'CLIENT') {
+      this.sendToHost('REACTION_EMOTE', payload);
+      if (this.onMessage) {
+        this.onMessage('REACTION_EMOTE', payload, this.myPeerId);
+      }
+    }
   }
 
   /**

@@ -16,6 +16,9 @@
   <!-- Canvas Confetti Overlay -->
   <canvas id="confetti-canvas" class="confetti-canvas"></canvas>
 
+  <!-- Floating Emotes Container -->
+  <div id="floating-emotes-layer" class="floating-emotes-layer" aria-hidden="true"></div>
+
   <!-- Background Glow Orbs -->
   <div class="bg-effects" aria-hidden="true">
     <div class="glow-orb orb-1"></div>
@@ -54,7 +57,7 @@
       <section id="screen-home" class="screen active">
         <div class="hero-section">
           <div class="hero-badge-tag">
-            <span class="dot-pulse"></span> Pass-and-Play & Multi-Device
+            <span class="dot-pulse"></span> Pass-and-Play & Mabar Online
           </div>
           <div class="hero-logo-box">
             <h2 class="hero-title">SAMBUNGIN<span class="hero-exclaim">!</span></h2>
@@ -72,34 +75,41 @@
           </div>
         </div>
 
-        <div class="home-actions">
-          <button id="btn-start-setup" class="btn btn-primary btn-hero">
-            <span class="btn-icon">📱</span>
-            <span class="btn-text">1 PERANGKAT (PASS & PLAY)</span>
-          </button>
+        <!-- Distinct Game Mode Selection Cards -->
+        <div class="mode-cards-container">
+          <div class="mode-select-card card-mabar" id="card-mode-multiplayer" role="button" tabindex="0">
+            <div class="mode-card-badge">POPULER 🔥</div>
+            <div class="mode-card-icon">🎮</div>
+            <div class="mode-card-content">
+              <h3 class="mode-card-title">MABAR DI HP MASING-MASING</h3>
+              <p class="mode-card-desc">Bikin room dengan kode 4 huruf, semua teman main dari HP sendiri secara online!</p>
+            </div>
+            <span class="mode-card-arrow">➔</span>
+          </div>
 
-          <button id="btn-open-multiplayer" class="btn btn-network btn-hero">
-            <span class="btn-icon">📶</span>
-            <span class="btn-text">MAIN DI HP MASING-MASING</span>
-          </button>
-          
-          <button id="btn-quick-rules" class="btn btn-secondary">
+          <div class="mode-select-card card-passplay" id="card-mode-passplay" role="button" tabindex="0">
+            <div class="mode-card-icon">📱</div>
+            <div class="mode-card-content">
+              <h3 class="mode-card-title">1 PERANGKAT (PASS & PLAY)</h3>
+              <p class="mode-card-desc">Main gantian di 1 HP atau laptop yang sama saat nongkrong santai bareng.</p>
+            </div>
+            <span class="mode-card-arrow">➔</span>
+          </div>
+        </div>
+
+        <div class="home-bottom-actions">
+          <button id="btn-quick-rules" class="btn btn-secondary btn-block">
             <span class="btn-icon">📖</span>
-            <span class="btn-text">Cara Bermain</span>
-          </button>
-          
-          <button id="btn-home-settings" class="btn btn-tertiary">
-            <span class="btn-icon">⚙️</span>
-            <span class="btn-text">Pengaturan</span>
+            <span class="btn-text">Cara Bermain & Aturan</span>
           </button>
         </div>
 
         <div class="home-features-pill">
-          <span class="feature-item">📱 Pass & Play / Online</span>
+          <span class="feature-item">⚡ Auto-Turn Cepat</span>
           <span class="feature-divider">•</span>
-          <span class="feature-item">🔤 390k+ Kosakata ID & EN</span>
+          <span class="feature-item">🔤 390k+ Kata ID & EN</span>
           <span class="feature-divider">•</span>
-          <span class="feature-item">🎯 8 Tantangan Unik</span>
+          <span class="feature-item">🎯 8 Tantangan</span>
         </div>
       </section>
 
@@ -112,25 +122,26 @@
             </svg>
             <span>Kembali</span>
           </button>
-          <h2 class="section-title">Mode Multi-Device</h2>
+          <h2 class="section-title">Mabar HP Sendiri</h2>
           <div class="header-spacer"></div>
         </div>
 
         <div class="setup-scroll-area">
-          <div class="setup-card text-center">
-            <h3 class="card-title">Main Bersama di HP Masing-Masing</h3>
-            <p class="card-desc">Satu orang membuat Room (Host) dan teman-teman bergabung menggunakan Kode Room.</p>
+          <div class="setup-card text-center" style="margin-bottom: 20px;">
+            <div style="font-size: 2.2rem; margin-bottom: 6px;">📶</div>
+            <h3 class="card-title">Pilih Peran Permainan</h3>
+            <p class="card-desc">Satu orang membuat room sebagai Host, teman-teman lain bergabung dengan kode room.</p>
           </div>
 
           <div class="home-actions">
-            <button id="btn-choice-create-room" class="btn btn-primary btn-lg">
+            <button id="btn-choice-create-room" class="btn btn-primary btn-hero">
               <span class="btn-icon">👑</span>
-              <span class="btn-text">Buat Room Baru (Host)</span>
+              <span class="btn-text">BUAT ROOM BARU (HOST)</span>
             </button>
 
-            <button id="btn-choice-join-room" class="btn btn-network btn-lg">
+            <button id="btn-choice-join-room" class="btn btn-network btn-hero">
               <span class="btn-icon">🚪</span>
-              <span class="btn-text">Gabung Room Teman (Join)</span>
+              <span class="btn-text">GABUNG ROOM TEMAN (JOIN)</span>
             </button>
           </div>
         </div>
@@ -149,17 +160,26 @@
         <div class="setup-scroll-area">
           <!-- Room Code Card -->
           <div class="room-code-card">
-            <div class="room-code-label">KODE ROOM UNTUK TEMAN:</div>
+            <div class="room-code-label">BAGIKAN KODE INI KE TEMAN:</div>
             <div id="host-room-code-display" class="room-code-display">----</div>
-            <button id="btn-copy-room-code" class="btn-copy-code" type="button">
-              📋 Salin Kode Room
-            </button>
+            
+            <div class="share-buttons-row">
+              <button id="btn-share-wa" class="btn-share-wa" type="button">
+                <span>💬 Kirim ke WhatsApp</span>
+              </button>
+              <button id="btn-copy-room-code" class="btn-copy-code" type="button">
+                <span>📋 Salin Link</span>
+              </button>
+            </div>
           </div>
 
           <!-- Players joined -->
           <div class="lobby-players-box">
             <div class="card-header-row">
-              <h3 class="card-title">Pemain Terhubung</h3>
+              <div>
+                <h3 class="card-title">Daftar Pemain di Room</h3>
+                <p class="card-desc">Game mulai otomatis bergantian begitu Host menekan tombol mulai</p>
+              </div>
               <span id="host-player-count-badge" class="badge-count">1 Pemain</span>
             </div>
             <div id="host-lobby-players-list">
@@ -246,7 +266,7 @@
               
               <div style="margin-bottom: 14px;">
                 <label class="setting-label">Kode Room (4 Karakter)</label>
-                <input type="text" id="input-client-room-code" placeholder="Contoh: A7K9" maxlength="6" class="btn-block" style="padding: 12px 14px; background: rgba(15, 23, 42, 0.8); border: 1.5px solid var(--bg-card-border); border-radius: var(--radius-md); color: var(--color-accent); font-family: var(--font-display); font-size: 1.4rem; font-weight: 900; letter-spacing: 0.2em; text-align: center; text-transform: uppercase; outline: none;">
+                <input type="text" id="input-client-room-code" placeholder="Contoh: A7K9" maxlength="6" class="btn-block" style="padding: 12px 14px; background: rgba(15, 23, 42, 0.8); border: 1.5px solid var(--bg-card-border); border-radius: var(--radius-md); color: var(--color-accent); font-family: var(--font-display); font-size: 1.6rem; font-weight: 900; letter-spacing: 0.25em; text-align: center; text-transform: uppercase; outline: none;">
               </div>
 
               <div id="client-join-error" class="form-feedback error-msg"></div>
@@ -263,6 +283,7 @@
             <h3 class="card-title" id="client-room-title">Room: ----</h3>
             <div class="waiting-spinner"></div>
             <p class="card-desc">Menunggu Host mengatur ronde dan memulai permainan...</p>
+            <p class="card-desc" style="color: var(--color-accent); margin-top: 6px;">💡 Begitu Host mulai, game akan langsung jalan otomatis di HP kamu!</p>
             
             <div class="lobby-players-box" style="margin-top: 18px; text-align: left;">
               <h4 class="card-title" style="font-size: 0.95rem; margin-bottom: 10px;">Pemain di Room:</h4>
@@ -378,7 +399,7 @@
         </div>
       </section>
 
-      <!-- ================= 6. READY / TURN HANDOFF OVERLAY ================= -->
+      <!-- ================= 6. READY / TURN HANDOFF OVERLAY (Pass & Play Only) ================= -->
       <section id="screen-ready" class="screen">
         <div class="ready-card-modal">
           <div class="ready-badge-pill" id="ready-badge-header">OPER PERANGKAT 🔄</div>
@@ -414,15 +435,18 @@
         </div>
       </section>
 
-      <!-- ================= 7. GAMEPLAY SCREEN ================= -->
+      <!-- ================= 7. GAMEPLAY ARENA SCREEN ================= -->
       <section id="screen-game" class="screen">
-        <!-- Multi-Device Turn Status Banner -->
-        <div id="game-multi-turn-banner" class="hidden"></div>
+        <!-- Prominent Status Banner: Your Turn vs Spectating -->
+        <div id="game-turn-banner" class="turn-banner-box banner-active-turn">
+          <span class="banner-badge">GILIRAN KAMU</span>
+          <h2 id="banner-main-text" class="banner-title">Ketik kata berawalan B!</h2>
+        </div>
 
         <!-- Game Top Bar -->
         <div class="game-top-bar">
           <div class="turn-indicator">
-            <span class="turn-badge" id="game-turn-badge">GILIRAN</span>
+            <span class="turn-badge" id="game-turn-badge">PEMAIN</span>
             <span id="game-active-player-name" class="active-player-name">Pemain 1</span>
           </div>
           <div class="game-top-actions">
@@ -478,10 +502,14 @@
           </div>
         </div>
 
-        <!-- Word Input Form -->
+        <!-- Word Input Form with Auto-Prefix Badge -->
         <form id="form-submit-word" class="word-input-container" onsubmit="return false;">
-          <div class="input-wrapper">
-            <input type="text" id="input-word" placeholder="Ketik kata sambungan..." autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" maxlength="24">
+          <div class="input-wrapper with-prefix">
+            <!-- Auto-prefix badge: Automatically sticks the required letter in front! -->
+            <div class="input-prefix-badge" id="input-prefix-badge" title="Huruf wajib sudah otomatis terisi">
+              <span id="input-prefix-letter">U</span>
+            </div>
+            <input type="text" id="input-word" placeholder="Ketik kelanjutannya..." autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" maxlength="24">
             <button type="submit" id="btn-submit-word" class="btn btn-submit">
               <span>KIRIM ↵</span>
             </button>
@@ -489,8 +517,23 @@
           <div id="word-feedback-msg" class="word-feedback" aria-live="assertive"></div>
         </form>
 
+        <!-- Spectator Reactions Bar (Visible when waiting for opponent) -->
+        <div id="spectator-reaction-box" class="spectator-reaction-box hidden">
+          <div class="spectator-status-text" id="spectator-status-text">
+            <span>⏳ Menunggu giliran lawan... Kirim reaksi:</span>
+          </div>
+          <div class="reaction-emojis-row">
+            <button type="button" class="btn-emote" data-emoji="😂" title="Tertawa">😂</button>
+            <button type="button" class="btn-emote" data-emoji="🔥" title="Semangat">🔥</button>
+            <button type="button" class="btn-emote" data-emoji="💀" title="Tengkorak">💀</button>
+            <button type="button" class="btn-emote" data-emoji="⏱️" title="Waktu">⏱️</button>
+            <button type="button" class="btn-emote" data-emoji="👏" title="Tepuk Tangan">👏</button>
+            <button type="button" class="btn-emote" data-emoji="😱" title="Kaget">😱</button>
+          </div>
+        </div>
+
         <!-- Lifeline / Skip Button -->
-        <div class="lifeline-bar">
+        <div class="lifeline-bar" id="game-lifeline-bar">
           <button id="btn-use-lifeline" class="btn btn-sm btn-lifeline" title="Bantuan: Ganti Huruf">
             <span>💡 Ganti Huruf (<span id="lifeline-count">1</span> tersisa)</span>
           </button>
@@ -510,6 +553,9 @@
         <div class="mini-roster" id="game-mini-roster">
           <!-- Rendered dynamically -->
         </div>
+
+        <!-- Floating Reactions Animation Layer -->
+        <div id="floating-emotes-container" class="floating-emotes-container" aria-hidden="true"></div>
       </section>
 
       <!-- ================= 8. RESULTS SCREEN ================= -->
@@ -574,7 +620,7 @@
         </div>
         <div class="modal-body modal-scroll">
           <div class="rule-block">
-            <h4>🎯 Aturan Utama</h4>
+            <h4>🎯 Aturan Sambung Kata</h4>
             <p>Kata yang kamu ketik <strong>wajib diawali huruf terakhir</strong> dari kata pemain sebelumnya!</p>
             <div class="example-box">
               Contoh: BUK<strong>U</strong> ➔ <strong>U</strong>LA<strong>R</strong> ➔ <strong>R</strong>OT<strong>I</strong> ➔ <strong>I</strong>KA<strong>N</strong>
@@ -582,11 +628,17 @@
           </div>
 
           <div class="rule-block">
-            <h4>📱 Dua Cara Bermain</h4>
+            <h4>🎮 Cara Mabar di HP Masing-Masing</h4>
             <ul>
-              <li><strong>1 Perangkat (Pass & Play):</strong> Main bergantian di 1 HP/laptop. Waktu tidak akan jalan sebelum tombol "Mulai Giliran" ditekan.</li>
-              <li><strong>Main di HP Masing-Masing (Multi-Device):</strong> Host membuat Room dan membagikan Kode 4 Huruf. Teman-teman bergabung langsung dari browser HP masing-masing!</li>
+              <li><strong>Host (Pembuat Room):</strong> Pilih "Buat Room Baru", lalu kirim kode 4 huruf atau bagikan link langsung ke WhatsApp teman.</li>
+              <li><strong>Teman (Joiner):</strong> Buka link WA atau ketik kode room, langsung masuk ke lobby!</li>
+              <li><strong>Alur Otomatis:</strong> Hanya Host yang menekan "Mulai". Setelah game mulai, giliran dan timer langsung jalan otomatis tanpa perlu tekan tombol mulai lagi.</li>
             </ul>
+          </div>
+
+          <div class="rule-block">
+            <h4>📱 Mode 1 HP (Pass & Play)</h4>
+            <p>Main gantian di 1 HP. Layar akan menjeda dan meminta konfirmasi "Mulai Giliran" saat mengoper HP agar waktu tidak terbuang saat oper tangan.</p>
           </div>
 
           <div class="rule-block">
@@ -594,7 +646,7 @@
             <ul>
               <li>Kata yang tidak diawali huruf wajib.</li>
               <li>Kata yang sudah pernah digunakan dalam sesi yang sama (anti-duplikat).</li>
-              <li>Kata yang tidak terdapat di dalam dataset kamus kosakata lokal.</li>
+              <li>Kata yang tidak terdapat di dalam kamus 390.000+ kosakata lokal.</li>
               <li>Input kosong, angka, tanda baca, atau lebih dari satu kata.</li>
             </ul>
           </div>
@@ -606,11 +658,6 @@
               <li><strong>Free Play:</strong> Tanpa eliminasi! Setiap kata valid menghasilkan poin. Cocok untuk sesi santai.</li>
               <li><strong>Sudden Death:</strong> Mode ketegangan tinggi! Hanya 1 nyawa per pemain, sekali salah langsung gugur.</li>
             </ul>
-          </div>
-
-          <div class="rule-block">
-            <h4>⚡ 8 Variasi Tantangan Acak</h4>
-            <p>Jika fitur tantangan diaktifkan, giliran tertentu akan memiliki modifier seru seperti Kategori Wajib, Waktu Kilat, Larangan Huruf, dsb.</p>
           </div>
         </div>
         <div class="modal-footer">
@@ -644,6 +691,17 @@
               <p class="setting-item-desc">Atur kekuatan efek suara</p>
             </div>
             <input type="range" id="setting-volume" min="0" max="100" value="80" class="range-slider">
+          </div>
+
+          <div class="setting-item-row">
+            <div>
+              <strong class="setting-item-title">Efek Getar HP (Vibration)</strong>
+              <p class="setting-item-desc">Getar saat giliran kamu aktif & timer kritis</p>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="setting-vibration" checked>
+              <span class="toggle-slider"></span>
+            </label>
           </div>
 
           <div class="setting-item-row">
