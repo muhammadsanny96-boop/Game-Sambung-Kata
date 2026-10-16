@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="SAMBUNGIN! Game party sambung kata seru untuk dimainkan bersama di satu perangkat. Pass and play, adu kosakata, dan taklukkan tantangannya!">
+  <title>SAMBUNGIN! — Party Word Chain Game</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Background Glow Orbs -->
+  <div class="bg-effects" aria-hidden="true">
+    <div class="glow-orb orb-1"></div>
+    <div class="glow-orb orb-2"></div>
+    <div class="glow-orb orb-3"></div>
+  </div>
+
+  <div id="app-container" class="app-container">
+    <!-- Top Global Header -->
+    <header class="top-nav">
+      <div class="nav-brand" id="nav-brand-btn" role="button" tabindex="0">
+        <span class="brand-badge">🎮 PARTY</span>
+        <h1 class="brand-title">SAMBUNGIN<span>!</span></h1>
+      </div>
+      <div class="nav-actions">
+        <button id="btn-open-how-to" class="icon-btn" aria-label="Cara Bermain" title="Cara Bermain">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </button>
+        <button id="btn-open-settings" class="icon-btn" aria-label="Pengaturan" title="Pengaturan">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Screens Container -->
+    <main class="main-content">
+      
+      <!-- ================= 1. HOME SCREEN ================= -->
+      <section id="screen-home" class="screen active">
+        <div class="hero-section">
+          <div class="hero-badge-tag">
+            <span class="dot-pulse"></span> Pass-and-Play Multiplayer
+          </div>
+          <div class="hero-logo-box">
+            <h2 class="hero-title">SAMBUNGIN<span class="hero-exclaim">!</span></h2>
+            <p class="hero-subtitle">Game Sambung Kata Paling Seru Buat Nongkrong Bareng Teman!</p>
+          </div>
+
+          <div class="rule-chain-preview">
+            <div class="chain-chip">BUK<span class="letter-match">U</span></div>
+            <span class="chain-arrow">➔</span>
+            <div class="chain-chip"><span class="letter-match">U</span>LA<span class="letter-match">R</span></div>
+            <span class="chain-arrow">➔</span>
+            <div class="chain-chip"><span class="letter-match">R</span>OT<span class="letter-match">I</span></div>
+            <span class="chain-arrow">➔</span>
+            <div class="chain-chip"><span class="letter-match">I</span>KA<span class="letter-match">N</span></div>
+          </div>
+        </div>
+
+        <div class="home-actions">
+          <button id="btn-start-setup" class="btn btn-primary btn-hero">
+            <span class="btn-icon">⚡</span>
+            <span class="btn-text">MULAI BERMAIN</span>
+          </button>
+          
+          <button id="btn-quick-rules" class="btn btn-secondary">
+            <span class="btn-icon">📖</span>
+            <span class="btn-text">Cara Bermain</span>
+          </button>
+          
+          <button id="btn-home-settings" class="btn btn-tertiary">
+            <span class="btn-icon">⚙️</span>
+            <span class="btn-text">Pengaturan</span>
+          </button>
+        </div>
+
+        <div class="home-features-pill">
+          <span class="feature-item">📱 1 Perangkat Bersama</span>
+          <span class="feature-divider">•</span>
+          <span class="feature-item">📴 100% Offline</span>
+          <span class="feature-divider">•</span>
+          <span class="feature-item">🎯 8 Tantangan Unik</span>
+        </div>
+      </section>
+
+      <!-- ================= 2. SETUP SCREEN ================= -->
+      <section id="screen-setup" class="screen">
+        <div class="screen-header">
+          <button id="btn-back-to-home" class="btn-back" aria-label="Kembali ke Beranda">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            <span>Kembali</span>
+          </button>
+          <h2 class="section-title">Setup Permainan</h2>
+          <div class="header-spacer"></div>
+        </div>
+
+        <div class="setup-scroll-area">
+          <!-- Player List Card -->
+          <div class="setup-card">
+            <div class="card-header-row">
+              <div>
+                <h3 class="card-title">Daftar Pemain</h3>
+                <p class="card-desc">Minimal 2 pemain pada satu perangkat</p>
+              </div>
+              <span id="player-count-badge" class="badge-count">2 Pemain</span>
+            </div>
+
+            <form id="form-add-player" class="add-player-form" onsubmit="return false;">
+              <div class="input-with-button">
+                <input type="text" id="input-player-name" placeholder="Ketik nama pemain..." maxlength="16" autocomplete="off">
+                <button type="submit" id="btn-add-player" class="btn btn-sm btn-accent">
+                  <span>+ Tambah</span>
+                </button>
+              </div>
+              <div id="add-player-error" class="form-feedback error-msg" aria-live="polite"></div>
+            </form>
+
+            <div id="player-list-container" class="player-list-items" role="list">
+              <!-- Rendered dynamically by app.js -->
+            </div>
+          </div>
+
+          <!-- Game Options Card -->
+          <div class="setup-card">
+            <h3 class="card-title">Pengaturan Ronde</h3>
+            
+            <!-- Game Mode -->
+            <div class="setting-group">
+              <label class="setting-label">Mode Permainan</label>
+              <div class="pill-selector mode-selector" role="radiogroup">
+                <button type="button" class="pill-opt active" data-mode="lps" role="radio" aria-checked="true">
+                  <span class="pill-title">🏆 Last Player Standing</span>
+                  <span class="pill-desc">3 Nyawa, yang gugur tereliminasi!</span>
+                </button>
+                <button type="button" class="pill-opt" data-mode="freeplay" role="radio" aria-checked="false">
+                  <span class="pill-title">🎯 Free Play</span>
+                  <span class="pill-desc">Tanpa eliminasi, kumpulkan poin kata!</span>
+                </button>
+                <button type="button" class="pill-opt" data-mode="suddendeath" role="radio" aria-checked="false">
+                  <span class="pill-title">⚡ Sudden Death</span>
+                  <span class="pill-desc">1 Nyawa, satu kesalahan langsung gugur!</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Timer Duration -->
+            <div class="setting-group">
+              <label class="setting-label">Durasi Timer Per Giliran</label>
+              <div class="chip-grid timer-grid">
+                <button type="button" class="chip-opt" data-timer="5">5 Detik <small>(Kilat)</small></button>
+                <button type="button" class="chip-opt active" data-timer="10">10 Detik <small>(Standar)</small></button>
+                <button type="button" class="chip-opt" data-timer="15">15 Detik <small>(Santai)</small></button>
+                <button type="button" class="chip-opt" data-timer="20">20 Detik <small>(Pemula)</small></button>
+              </div>
+            </div>
+
+            <!-- Initial Lives (for LPS mode) -->
+            <div id="lives-setting-group" class="setting-group">
+              <label class="setting-label">Jumlah Nyawa Awal</label>
+              <div class="chip-grid lives-grid">
+                <button type="button" class="chip-opt" data-lives="1">1 ❤️</button>
+                <button type="button" class="chip-opt active" data-lives="3">3 ❤️❤️❤️</button>
+                <button type="button" class="chip-opt" data-lives="5">5 ❤️❤️❤️❤️❤️</button>
+              </div>
+            </div>
+
+            <!-- Challenge Level -->
+            <div class="setting-group">
+              <label class="setting-label">Tingkat Tantangan Acak</label>
+              <div class="chip-grid challenge-grid">
+                <button type="button" class="chip-opt" data-challenge="off">Nonaktif</button>
+                <button type="button" class="chip-opt" data-challenge="casual">Santai</button>
+                <button type="button" class="chip-opt active" data-challenge="normal">Normal</button>
+                <button type="button" class="chip-opt" data-challenge="chaos">Kacau 💥</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="setup-footer-bar">
+          <div id="setup-validation-msg" class="validation-warning" aria-live="polite"></div>
+          <button id="btn-start-game" class="btn btn-primary btn-block btn-lg">
+            <span>LANJUT KE PERMAINAN ➔</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- ================= 3. READY / TURN HANDOFF OVERLAY ================= -->
+      <!-- Fitur wajib pass-and-play: saat giliran berganti, harus ketik 'Mulai' dulu baru waktu jalan! -->
+      <section id="screen-ready" class="screen">
+        <div class="ready-card-modal">
+          <div class="ready-badge-pill">OPER PERANGKAT 🔄</div>
+          
+          <div class="ready-avatar-large" id="ready-player-avatar">P1</div>
+          
+          <h2 class="ready-player-heading">Giliran Kamu!</h2>
+          <p class="ready-player-name" id="ready-player-name">Pemain 1</p>
+          
+          <div class="ready-info-box">
+            <div class="info-row">
+              <span class="info-lbl">Huruf Wajib Pertama:</span>
+              <span class="info-val letter-highlight" id="ready-required-letter">B</span>
+            </div>
+            <div class="info-row" id="ready-challenge-row">
+              <span class="info-lbl">Tantangan:</span>
+              <span class="info-val" id="ready-challenge-desc">Standar (Tanpa Batasan)</span>
+            </div>
+            <div class="info-row">
+              <span class="info-lbl">Waktu Menjawab:</span>
+              <span class="info-val" id="ready-timer-desc">10 Detik</span>
+            </div>
+          </div>
+
+          <p class="ready-prompt-text">
+            Pastikan perangkat sudah di tanganmu. Waktu <strong>TIDAK AKAN BERJALAN</strong> sebelum kamu menekan tombol di bawah!
+          </p>
+
+          <button id="btn-ready-start" class="btn btn-primary btn-hero pulse-btn">
+            <span class="btn-icon">⏱️</span>
+            <span class="btn-text">MULAI GILIRAN SEKARANG</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- ================= 4. GAMEPLAY SCREEN ================= -->
+      <section id="screen-game" class="screen">
+        <!-- Game Top Bar -->
+        <div class="game-top-bar">
+          <div class="turn-indicator">
+            <span class="turn-badge">GILIRAN</span>
+            <span id="game-active-player-name" class="active-player-name">Pemain 1</span>
+          </div>
+          <div class="game-top-actions">
+            <div class="stat-badge lives-badge" id="game-player-lives-badge">
+              <span class="stat-icon">❤️</span>
+              <span id="game-player-lives-val">3</span>
+            </div>
+            <div class="stat-badge score-badge" id="game-player-score-badge">
+              <span class="stat-icon">⭐</span>
+              <span id="game-player-score-val">0</span>
+            </div>
+            <button id="btn-pause-game" class="icon-btn-game" aria-label="Jeda Permainan" title="Jeda">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="4" width="4" height="16" rx="1.5"></rect>
+                <rect x="14" y="4" width="4" height="16" rx="1.5"></rect>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Challenge Active Banner (Conditional) -->
+        <div id="game-challenge-banner" class="challenge-banner hidden">
+          <span class="challenge-icon" id="challenge-icon">🎯</span>
+          <div class="challenge-info">
+            <strong id="challenge-title">Kategori Wajib</strong>
+            <span id="challenge-instruction">Kata harus nama Hewan!</span>
+          </div>
+        </div>
+
+        <!-- Central Timer & Target Letter Arena -->
+        <div class="game-arena">
+          <!-- Circular / Linear Timer Progress Bar -->
+          <div class="timer-wrapper">
+            <div class="timer-circle" id="timer-circle">
+              <span id="timer-seconds" class="timer-countdown">10</span>
+              <span class="timer-label">DETIK</span>
+            </div>
+            <div class="timer-progress-track">
+              <div id="timer-progress-bar" class="timer-progress-fill" style="width: 100%;"></div>
+            </div>
+          </div>
+
+          <!-- Big Word Chain Letter Anchor -->
+          <div class="chain-anchor-card">
+            <div class="anchor-label">KATA SEBELUMNYA:</div>
+            <div class="prev-word-display" id="game-prev-word">
+              <span class="prev-stem">BUK</span><span class="prev-last-char">U</span>
+            </div>
+            <div class="required-letter-prompt">
+              KATA KAMU WAJIB DIAWALI HURUF:
+              <div class="big-required-letter" id="game-required-letter">U</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Word Input Form -->
+        <form id="form-submit-word" class="word-input-container" onsubmit="return false;">
+          <div class="input-wrapper">
+            <input type="text" id="input-word" placeholder="Ketik kata sambungan..." autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" maxlength="24">
+            <button type="submit" id="btn-submit-word" class="btn btn-submit">
+              <span>KIRIM ↵</span>
+            </button>
+          </div>
+          <div id="word-feedback-msg" class="word-feedback" aria-live="assertive"></div>
+        </form>
+
+        <!-- Lifeline / Skip Button -->
+        <div class="lifeline-bar">
+          <button id="btn-use-lifeline" class="btn btn-sm btn-lifeline" title="Bantuan: Ganti Huruf">
+            <span>💡 Bantuan (<span id="lifeline-count">1</span> tersisa)</span>
+          </button>
+        </div>
+
+        <!-- Recent Word History Tray -->
+        <div class="word-history-section">
+          <div class="history-header">
+            <span>Rantai Kata (<span id="history-count">0</span> kata)</span>
+          </div>
+          <div id="word-history-list" class="history-chip-list">
+            <span class="history-empty">Belum ada kata terhubung</span>
+          </div>
+        </div>
+
+        <!-- Active Players Mini Roster -->
+        <div class="mini-roster" id="game-mini-roster">
+          <!-- Rendered dynamically -->
+        </div>
+      </section>
+
+      <!-- ================= 5. RESULTS SCREEN ================= -->
+      <section id="screen-results" class="screen">
+        <div class="results-header">
+          <div class="results-crown">👑</div>
+          <h2 class="results-title">PERMAINAN SELESAI!</h2>
+          <p class="results-subtitle" id="results-mode-desc">Mode Last Player Standing</p>
+        </div>
+
+        <div class="winner-spotlight" id="winner-spotlight">
+          <div class="winner-avatar" id="results-winner-avatar">🏆</div>
+          <h3 class="winner-name" id="results-winner-name">Pemain 1</h3>
+          <div class="winner-label" id="results-winner-label">JUARA BERTAHAN TERAKHIR!</div>
+        </div>
+
+        <!-- Leaderboard Table -->
+        <div class="leaderboard-card">
+          <h4 class="leaderboard-title">Papan Skor & Riwayat</h4>
+          <div class="leaderboard-list" id="results-leaderboard-list">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+        <div class="results-stats-row">
+          <div class="stat-box">
+            <span class="stat-num" id="stat-total-words">0</span>
+            <span class="stat-txt">Total Kata Rantai</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-num" id="stat-longest-word">-</span>
+            <span class="stat-txt">Kata Terpanjang</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-num" id="stat-rounds-count">0</span>
+            <span class="stat-txt">Total Giliran</span>
+          </div>
+        </div>
+
+        <div class="results-actions">
+          <button id="btn-play-again" class="btn btn-primary btn-hero">
+            <span class="btn-icon">🔄</span>
+            <span class="btn-text">MAIN LAGI</span>
+          </button>
+          <button id="btn-back-to-menu" class="btn btn-secondary">
+            <span class="btn-icon">🏠</span>
+            <span class="btn-text">Kembali ke Menu</span>
+          </button>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ================= MODALS ================= -->
+
+    <!-- How To Play Modal -->
+    <div id="modal-how-to" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modal-how-to-title">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 id="modal-how-to-title">Cara Bermain SAMBUNGIN!</h3>
+          <button class="modal-close-btn" id="btn-close-how-to" aria-label="Tutup">✕</button>
+        </div>
+        <div class="modal-body modal-scroll">
+          <div class="rule-block">
+            <h4>🎯 Aturan Utama</h4>
+            <p>Pemain bermain bergantian pada <strong>satu perangkat yang sama</strong> secara pass-and-play. Kata yang kamu sebutkan <strong>wajib diawali huruf terakhir</strong> dari kata pemain sebelumnya!</p>
+            <div class="example-box">
+              Contoh: BUK<strong>U</strong> ➔ <strong>U</strong>LA<strong>R</strong> ➔ <strong>R</strong>OT<strong>I</strong> ➔ <strong>I</strong>KA<strong>N</strong>
+            </div>
+          </div>
+
+          <div class="rule-block">
+            <h4>🔄 Pergantian Giliran Aman (Pass-and-Play)</h4>
+            <p>Saat giliran berganti, layar akan berhenti dan meminta konfirmasi. Oper perangkat ke temanmu. Waktu giliran <strong>baru akan mulai berjalan</strong> setelah temanmu menekan tombol <strong>"MULAI GILIRAN"</strong>!</p>
+          </div>
+
+          <div class="rule-block">
+            <h4>🚫 Kata yang Ditolak</h4>
+            <ul>
+              <li>Kata yang tidak diawali huruf wajib.</li>
+              <li>Kata yang sudah pernah digunakan dalam sesi yang sama (anti-duplikat).</li>
+              <li>Kata yang tidak terdapat di dalam dataset kosakata kamus lokal.</li>
+              <li>Input kosong, angka, tanda baca, atau lebih dari satu kata.</li>
+            </ul>
+          </div>
+
+          <div class="rule-block">
+            <h4>🏆 Mode Permainan</h4>
+            <ul>
+              <li><strong>Last Player Standing:</strong> Setiap pemain punya 3 nyawa. Salah kata atau waktu habis = kehilangan 1 nyawa. Pemain terakhir yang bertahan menang!</li>
+              <li><strong>Free Play:</strong> Tanpa eliminasi! Setiap kata valid menghasilkan poin. Cocok untuk sesi kasual yang santai.</li>
+              <li><strong>Sudden Death:</strong> Mode ketegangan tinggi! Hanya 1 nyawa per pemain, sekali salah langsung gugur.</li>
+            </ul>
+          </div>
+
+          <div class="rule-block">
+            <h4>⚡ Tantangan Acak</h4>
+            <p>Jika fitur tantangan diaktifkan, giliran tertentu akan memiliki modifier khusus seperti Kategori Wajib, Waktu Kilat, Larangan Huruf Tertentu, atau Kata Panjang!</p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-primary btn-block" id="btn-close-how-to-bottom">Saya Mengerti!</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="modal-settings" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modal-settings-title">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 id="modal-settings-title">Pengaturan Permainan</h3>
+          <button class="modal-close-btn" id="btn-close-settings" aria-label="Tutup">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="setting-item-row">
+            <div>
+              <strong class="setting-item-title">Efek Suara (Audio)</strong>
+              <p class="setting-item-desc">Suara sintetis Web Audio API saat timer, klik, benar & salah</p>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="setting-sound" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-item-row">
+            <div>
+              <strong class="setting-item-title">Volume Suara</strong>
+              <p class="setting-item-desc">Atur kekuatan efek suara</p>
+            </div>
+            <input type="range" id="setting-volume" min="0" max="100" value="80" class="range-slider">
+          </div>
+
+          <div class="setting-item-row">
+            <div>
+              <strong class="setting-item-title">Animasi Halus</strong>
+              <p class="setting-item-desc">Matikan jika ingin tampilan lebih hemat daya</p>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="setting-animations" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-divider"></div>
+
+          <div class="setting-item-row">
+            <div>
+              <strong class="setting-item-title text-danger">Reset Data Tersimpan</strong>
+              <p class="setting-item-desc">Hapus riwayat nama pemain & setelan lokal</p>
+            </div>
+            <button id="btn-reset-storage" class="btn btn-sm btn-danger">Reset</button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary btn-block" id="btn-close-settings-bottom">Simpan & Tutup</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pause Modal -->
+    <div id="modal-pause" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modal-pause-title">
+      <div class="modal-card modal-pause-card">
+        <div class="modal-header">
+          <h3 id="modal-pause-title">⏸️ Permainan Dijeda</h3>
+        </div>
+        <div class="modal-body text-center">
+          <p>Timer sedang berhenti. Apa yang ingin kamu lakukan?</p>
+          <div class="pause-actions">
+            <button id="btn-resume-game" class="btn btn-primary btn-block btn-lg">
+              ▶️ Lanjutkan Permainan
+            </button>
+            <button id="btn-restart-game" class="btn btn-secondary btn-block">
+              🔄 Mulai Ulang Sesi
+            </button>
+            <button id="btn-quit-to-home" class="btn btn-danger btn-block">
+              🚪 Keluar ke Menu Utama
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  </div>
+
+  <!-- Scripts: Modular Vanilla JS -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
