@@ -33,17 +33,19 @@ assert.ok(cssContent.includes('.btn-passplay-hero'), 'css/style.css must have .b
 assert.ok(cssContent.includes('.glow-orb {\n  display: none;'), 'css/style.css must disable heavy glow-orb blur animation');
 console.log('✅ 2. css/style.css contains .hidden !important, zero-delay touch-action, and GPU-safe gradients.');
 
-// 3. Verify js/app.js implements strict spectator lockdown and safe element binding
+// 3. Verify modular js files and app.js implement strict spectator lockdown and safe element binding
 const appContent = fs.readFileSync('js/app.js', 'utf-8');
+const arenaContent = fs.readFileSync('js/ui/game-arena.js', 'utf-8');
+const combinedJs = appContent + '\n' + arenaContent;
 
-assert.ok(appContent.includes('isMyTurnNow()'), 'app.js must implement isMyTurnNow()');
-assert.ok(appContent.includes("this.inputWord.readOnly = true;"), 'app.js must set readOnly = true for spectators');
-assert.ok(appContent.includes("this.inputWord.blur();"), 'app.js must blur inputWord for spectators to dismiss virtual keyboard');
-assert.ok(appContent.includes("this.formSubmitWord.style.display = 'none';"), 'app.js must set inline display: none for spectators');
-assert.ok(appContent.includes("this.formSubmitWord.classList.add('hidden');"), 'app.js must add hidden class for spectators');
-assert.ok(appContent.includes("!this.isMyTurnNow()"), 'app.js must check isMyTurnNow() before submission and keydown');
-assert.ok(appContent.includes("unlockAudio"), 'app.js must pre-warm audio context on first touch/pointerdown');
-console.log('✅ 3. js/app.js implements complete spectator input lockdown and touch audio pre-warming.');
+assert.ok(combinedJs.includes('isMyTurnNow()'), 'app.js must implement isMyTurnNow()');
+assert.ok(combinedJs.includes(".inputWord.readOnly = true;"), 'js must set readOnly = true for spectators');
+assert.ok(combinedJs.includes(".inputWord.blur();"), 'js must blur inputWord for spectators to dismiss virtual keyboard');
+assert.ok(combinedJs.includes(".formSubmitWord.style.display = 'none';"), 'js must set inline display: none for spectators');
+assert.ok(combinedJs.includes(".formSubmitWord.classList.add('hidden');"), 'js must add hidden class for spectators');
+assert.ok(combinedJs.includes("!this.isMyTurnNow()"), 'app.js must check isMyTurnNow() before submission and keydown');
+assert.ok(combinedJs.includes("unlockAudio"), 'app.js must pre-warm audio context on first touch/pointerdown');
+console.log('✅ 3. Modular JS implements complete spectator input lockdown and touch audio pre-warming.');
 
 // 4. Mock Turn Logic Test
 class MockPlayer {

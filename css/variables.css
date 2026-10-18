@@ -1,0 +1,56 @@
+/* ==========================================================================
+   SAMBUNGIN! — Design Tokens & Variables
+   ========================================================================== */
+
+:root {
+  /* Color Palette */
+  --bg-dark: #090D16;
+  --bg-surface: #111827;
+  --bg-surface-elevated: #1E1B4B;
+  --bg-card: rgba(30, 27, 75, 0.75);
+  --bg-card-border: rgba(99, 102, 241, 0.25);
+  --bg-card-hover: rgba(49, 46, 129, 0.9);
+
+  /* Primary Brand & Accents */
+  --color-primary: #6366F1;
+  --color-primary-light: #818CF8;
+  --color-primary-dark: #4338CA;
+  
+  --color-accent: #FBBF24;
+  --color-accent-hover: #F59E0B;
+  --color-accent-glow: rgba(251, 191, 36, 0.35);
+
+  --color-purple: #A855F7;
+  --color-pink: #EC4899;
+  
+  /* Status & Feedback */
+  --color-success: #10B981;
+  --color-success-glow: rgba(16, 185, 129, 0.3);
+  --color-danger: #EF4444;
+  --color-danger-glow: rgba(239, 68, 68, 0.3);
+  --color-warning: #F59E0B;
+  
+  /* Typography */
+  --text-main: #F8FAFC;
+  --text-muted: #94A3B8;
+  --text-dim: #64748B;
+  --text-inverted: #0F172A;
+
+  /* Sizing & Radius */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-full: 9999px;
+
+  /* Shadows & Glows */
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --shadow-glow-accent: 0 0 25px var(--color-accent-glow);
+  --shadow-glow-primary: 0 0 30px rgba(99, 102, 241, 0.35);
+
+  /* Typography Font Families */
+  --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}

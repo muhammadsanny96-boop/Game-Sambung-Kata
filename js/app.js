@@ -1,6 +1,6 @@
 /**
- * SAMBUNGIN! — Main Application Controller
- * Connects UI elements, views, audio, validator, game engine,
+ * SAMBUNGIN! — Main Application Controller (Refactored Orchestrator)
+ * Connects UI modules, views, audio, validator, game engine,
  * and WebRTC P2P multi-device networking.
  */
 
@@ -10,6 +10,15 @@ import { AudioController } from './audio.js';
 import { GameEngine } from './game-engine.js';
 import { NetworkManager } from './network.js';
 
+// Modular UI components
+import { DomCache } from './ui/dom-cache.js';
+import { ScreenManager } from './ui/screens.js';
+import { GameArenaUI, escapeHtml } from './ui/game-arena.js';
+import { RosterUI } from './ui/roster.js';
+import { LobbyUI } from './ui/lobby.js';
+import { ResultsUI } from './ui/results.js';
+import { bindEvents } from './ui/events.js';
+
 class SambunginApp {
   constructor() {
     this.validator = new WordValidator();
@@ -17,6 +26,14 @@ class SambunginApp {
     this.audio = new AudioController();
     this.engine = new GameEngine(this.validator, this.challenges, this.audio);
     this.network = new NetworkManager();
+
+    // UI Modules
+    this.dom = new DomCache();
+    this.screenMgr = new ScreenManager(this.dom, this);
+    this.arenaUI = new GameArenaUI(this.dom, this);
+    this.rosterUI = new RosterUI(this.dom, this);
+    this.lobbyUI = new LobbyUI(this.dom, this);
+    this.resultsUI = new ResultsUI(this.dom, this);
 
     // Mode Type: 'LOCAL' (1 Device Pass & Play) or 'NETWORK' (Multi-Device P2P)
     this.gameSessionType = 'LOCAL';
@@ -27,9 +44,6 @@ class SambunginApp {
       { id: 'p1', name: 'Pemain 1' },
       { id: 'p2', name: 'Pemain 2' }
     ];
-
-    // Multiplayer Roster (Host + Joined Clients)
-    this.networkPlayers = [];
 
     // Setup Config State
     this.setupConfig = {
@@ -52,10 +66,10 @@ class SambunginApp {
     };
 
     this.confettiAnimationId = null;
+    this.currentTurnPlayer = null;
 
-    this.cacheDom();
     this.loadPersistedData();
-    this.bindEvents();
+    bindEvents(this);
     this.setupEngineHooks();
     this.setupNetworkHooks();
     this.renderPlayerList();
@@ -80,164 +94,38 @@ class SambunginApp {
     if (roomFromUrl) {
       this.gameSessionType = 'NETWORK';
       this.showScreen('lobbyClient');
-      if (this.inputClientRoomCode) this.inputClientRoomCode.value = roomFromUrl.toUpperCase();
-      if (this.clientConnectBox) this.clientConnectBox.classList.remove('hidden');
-      if (this.clientWaitingBox) this.clientWaitingBox.classList.add('hidden');
+      if (this.dom.inputClientRoomCode) this.dom.inputClientRoomCode.value = roomFromUrl.toUpperCase();
+      if (this.dom.clientConnectBox) this.dom.clientConnectBox.classList.remove('hidden');
+      if (this.dom.clientWaitingBox) this.dom.clientWaitingBox.classList.add('hidden');
       this.showToast(`Kode room ${roomFromUrl.toUpperCase()} terdeteksi otomatis!`);
       setTimeout(() => {
-        if (this.inputClientName) this.inputClientName.focus();
+        if (this.dom.inputClientName) this.dom.inputClientName.focus();
       }, 250);
     }
   }
 
-  cacheDom() {
-    // Screens
-    this.screens = {
-      home: document.getElementById('screen-home'),
-      setup: document.getElementById('screen-setup'),
-      multiChoice: document.getElementById('screen-multiplayer-choice'),
-      lobbyHost: document.getElementById('screen-lobby-host'),
-      lobbyClient: document.getElementById('screen-lobby-client'),
-      ready: document.getElementById('screen-ready'),
-      game: document.getElementById('screen-game'),
-      results: document.getElementById('screen-results')
-    };
+  // Delegation methods to UI modules
+  showScreen(name) { this.screenMgr.showScreen(name); }
+  openModal(name) { this.screenMgr.openModal(name); }
+  closeModal(name) { this.screenMgr.closeModal(name); }
+  showToast(msg, duration) { this.screenMgr.showToast(msg, duration); }
 
-    // Modals
-    this.modals = {
-      howTo: document.getElementById('modal-how-to'),
-      settings: document.getElementById('modal-settings'),
-      pause: document.getElementById('modal-pause')
-    };
+  updateGameArena() { this.arenaUI.updateGameArena(); }
+  updateTurnActiveState(player, requiredLetter) { this.arenaUI.updateTurnActiveState(player, requiredLetter); }
+  updateTimerDisplay(sec, frac) { this.arenaUI.updateTimerDisplay(sec, frac); }
+  setWordFeedback(msg, ok) { this.arenaUI.setWordFeedback(msg, ok); }
+  renderWordHistory() { this.arenaUI.renderWordHistory(); }
 
-    // Canvas
-    this.confettiCanvas = document.getElementById('confetti-canvas');
+  renderPlayerList() { this.rosterUI.renderPlayerList(); }
+  renderMiniRoster() { this.rosterUI.renderMiniRoster(); }
+  renderReadyScreen(data) { this.rosterUI.renderReadyScreen(data); }
 
-    // Home buttons
-    this.btnStartSetup = document.getElementById('btn-start-setup');
-    this.btnOpenMultiplayer = document.getElementById('btn-open-multiplayer');
-    this.btnQuickRules = document.getElementById('btn-quick-rules');
-    this.btnHomeSettings = document.getElementById('btn-home-settings');
-    this.navBrandBtn = document.getElementById('nav-brand-btn');
-    this.btnOpenHowTo = document.getElementById('btn-open-how-to');
-    this.btnOpenSettings = document.getElementById('btn-open-settings');
+  renderHostLobbyPlayers() { this.lobbyUI.renderHostLobbyPlayers(); }
+  broadcastLobbyRoster() { this.lobbyUI.broadcastLobbyRoster(); }
+  renderClientLobbyPlayers(players) { this.lobbyUI.renderClientLobbyPlayers(players); }
 
-    // Multiplayer Choice buttons
-    this.btnBackMultiToHome = document.getElementById('btn-back-multi-to-home');
-    this.btnChoiceCreateRoom = document.getElementById('btn-choice-create-room');
-    this.btnChoiceJoinRoom = document.getElementById('btn-choice-join-room');
-
-    // Host Lobby elements
-    this.btnLeaveHostRoom = document.getElementById('btn-leave-host-room');
-    this.hostRoomCodeDisplay = document.getElementById('host-room-code-display');
-    this.btnCopyRoomCode = document.getElementById('btn-copy-room-code');
-    this.btnShareWa = document.getElementById('btn-share-wa');
-    this.btnCopyLink = document.getElementById('btn-copy-link');
-    this.hostPlayerCountBadge = document.getElementById('host-player-count-badge');
-    this.hostLobbyPlayersList = document.getElementById('host-lobby-players-list');
-    this.hostValidationMsg = document.getElementById('host-validation-msg');
-    this.btnHostStartGame = document.getElementById('btn-host-start-game');
-
-    // Client Lobby elements
-    this.btnLeaveClientRoom = document.getElementById('btn-leave-client-room');
-    this.clientConnectBox = document.getElementById('client-connect-box');
-    this.formJoinRoom = document.getElementById('form-join-room');
-    this.inputClientName = document.getElementById('input-client-name');
-    this.inputClientRoomCode = document.getElementById('input-client-room-code');
-    this.clientJoinError = document.getElementById('client-join-error');
-    this.btnSubmitJoinRoom = document.getElementById('btn-submit-join-room');
-    this.clientWaitingBox = document.getElementById('client-waiting-box');
-    this.clientRoomTitle = document.getElementById('client-room-title');
-    this.clientLobbyPlayersList = document.getElementById('client-lobby-players-list');
-
-    // Pass & Play Setup screen elements
-    this.btnBackToHome = document.getElementById('btn-back-to-home');
-    this.formAddPlayer = document.getElementById('form-add-player');
-    this.inputPlayerName = document.getElementById('input-player-name');
-    this.playerListContainer = document.getElementById('player-list-container');
-    this.playerCountBadge = document.getElementById('player-count-badge');
-    this.addPlayerError = document.getElementById('add-player-error');
-    this.livesSettingGroup = document.getElementById('lives-setting-group');
-    this.setupValidationMsg = document.getElementById('setup-validation-msg');
-    this.btnStartGame = document.getElementById('btn-start-game');
-
-    // Ready screen elements
-    this.readyPlayerAvatar = document.getElementById('ready-player-avatar');
-    this.readyPlayerName = document.getElementById('ready-player-name');
-    this.readyRequiredLetter = document.getElementById('ready-required-letter');
-    this.readyChallengeDesc = document.getElementById('ready-challenge-desc');
-    this.readyTimerDesc = document.getElementById('ready-timer-desc');
-    this.btnReadyStart = document.getElementById('btn-ready-start');
-    this.readyPromptInstruction = document.getElementById('ready-prompt-instruction');
-
-    // Gameplay Arena elements
-    this.gameTurnBanner = document.getElementById('game-turn-banner');
-    this.bannerMainText = document.getElementById('banner-main-text');
-    this.gameActivePlayerName = document.getElementById('game-active-player-name');
-    this.gameTurnBadge = document.getElementById('game-turn-badge');
-    this.gamePlayerLivesBadge = document.getElementById('game-player-lives-badge');
-    this.gamePlayerLivesVal = document.getElementById('game-player-lives-val');
-    this.gamePlayerScoreBadge = document.getElementById('game-player-score-badge');
-    this.gamePlayerScoreVal = document.getElementById('game-player-score-val');
-    this.btnPauseGame = document.getElementById('btn-pause-game');
-    this.gameChallengeBanner = document.getElementById('game-challenge-banner');
-    this.challengeIcon = document.getElementById('challenge-icon');
-    this.challengeTitle = document.getElementById('challenge-title');
-    this.challengeInstruction = document.getElementById('challenge-instruction');
-    this.timerCircle = document.getElementById('timer-circle');
-    this.timerSeconds = document.getElementById('timer-seconds');
-    this.timerProgressBar = document.getElementById('timer-progress-bar');
-    this.gamePrevWord = document.getElementById('game-prev-word');
-    this.gameRequiredLetter = document.getElementById('game-required-letter');
-    this.formSubmitWord = document.getElementById('form-submit-word');
-    this.inputWrapper = document.querySelector('.input-wrapper.with-prefix') || document.querySelector('.input-wrapper');
-    this.inputPrefixBadge = document.getElementById('input-prefix-badge');
-    this.inputPrefixLetter = document.getElementById('input-prefix-letter');
-    this.inputWord = document.getElementById('input-word');
-    this.btnSubmitWord = document.getElementById('btn-submit-word');
-    this.wordFeedbackMsg = document.getElementById('word-feedback-msg');
-    this.spectatorReactionBox = document.getElementById('spectator-reaction-box');
-    this.spectatorStatusText = document.getElementById('spectator-status-text');
-    this.floatingEmotesContainer = document.getElementById('floating-emotes-container');
-    this.btnUseLifeline = document.getElementById('btn-use-lifeline');
-    this.lifelineCount = document.getElementById('lifeline-count');
-    this.wordHistoryList = document.getElementById('word-history-list');
-    this.historyCount = document.getElementById('history-count');
-    this.gameMiniRoster = document.getElementById('game-mini-roster');
-
-    // Results screen elements
-    this.resultsModeDesc = document.getElementById('results-mode-desc');
-    this.resultsWinnerAvatar = document.getElementById('results-winner-avatar');
-    this.resultsWinnerName = document.getElementById('results-winner-name');
-    this.resultsWinnerLabel = document.getElementById('results-winner-label');
-    this.resultsLeaderboardList = document.getElementById('results-leaderboard-list');
-    this.statTotalWords = document.getElementById('stat-total-words');
-    this.statLongestWord = document.getElementById('stat-longest-word');
-    this.statRoundsCount = document.getElementById('stat-rounds-count');
-    this.btnPlayAgain = document.getElementById('btn-play-again');
-    this.btnBackToMenu = document.getElementById('btn-back-to-menu');
-
-    // Pause Modal buttons
-    this.btnResumeGame = document.getElementById('btn-resume-game');
-    this.btnRestartGame = document.getElementById('btn-restart-game');
-    this.btnQuitToHome = document.getElementById('btn-quit-to-home');
-
-    // Settings Modal elements
-    this.settingSound = document.getElementById('setting-sound');
-    this.settingVolume = document.getElementById('setting-volume');
-    this.settingAnimations = document.getElementById('setting-animations');
-    this.settingVibration = document.getElementById('setting-vibration');
-    this.btnResetStorage = document.getElementById('btn-reset-storage');
-    this.btnCloseSettings = document.getElementById('btn-close-settings');
-    this.btnCloseSettingsBottom = document.getElementById('btn-close-settings-bottom');
-
-    // How-to Modal elements
-    this.btnCloseHowTo = document.getElementById('btn-close-how-to');
-    this.btnCloseHowToBottom = document.getElementById('btn-close-how-to-bottom');
-
-    // Toast Container
-    this.toastContainer = document.getElementById('toast-container');
-  }
+  renderResultsScreen(summary) { this.resultsUI.renderResultsScreen(summary); }
+  launchConfetti() { this.resultsUI.launchConfetti(); }
 
   loadPersistedData() {
     try {
@@ -254,20 +142,25 @@ class SambunginApp {
         this.prefs = { ...this.prefs, ...JSON.parse(savedPrefs) };
       }
 
-      // Apply prefs
-      this.settingSound.checked = this.prefs.sound;
+      if (this.dom.settingSound) this.dom.settingSound.checked = this.prefs.sound;
       this.audio.setEnabled(this.prefs.sound);
 
-      this.settingVolume.value = this.prefs.volume;
+      if (this.dom.settingVolume) this.dom.settingVolume.value = this.prefs.volume;
       this.audio.setVolume(this.prefs.volume);
 
-      this.settingAnimations.checked = this.prefs.animations;
-
-      if (this.settingVibration) {
-        this.settingVibration.checked = (this.prefs.vibration !== false);
-      }
+      if (this.dom.settingAnimations) this.dom.settingAnimations.checked = this.prefs.animations;
+      if (this.dom.settingVibration) this.dom.settingVibration.checked = (this.prefs.vibration !== false);
     } catch (e) {
       console.warn('LocalStorage error:', e);
+    }
+  }
+
+  saveData() {
+    try {
+      localStorage.setItem('sambungin_players', JSON.stringify(this.players));
+      localStorage.setItem('sambungin_prefs', JSON.stringify(this.prefs));
+    } catch (e) {
+      console.warn('Cannot write to localStorage:', e);
     }
   }
 
@@ -287,462 +180,57 @@ class SambunginApp {
   }
 
   triggerFloatingEmote(emoji) {
-    if (!this.floatingEmotesContainer) return;
+    if (!this.dom.floatingEmotesContainer) return;
     const el = document.createElement('div');
     el.className = 'floating-emote';
     el.textContent = emoji;
     const randomLeft = Math.floor(Math.random() * 65) + 15;
     el.style.left = `${randomLeft}%`;
-    this.floatingEmotesContainer.appendChild(el);
+    this.dom.floatingEmotesContainer.appendChild(el);
     setTimeout(() => {
       el.remove();
     }, 2300);
   }
 
-  saveData() {
-    try {
-      localStorage.setItem('sambungin_players', JSON.stringify(this.players));
-      localStorage.setItem('sambungin_prefs', JSON.stringify(this.prefs));
-    } catch (e) {
-      console.warn('Cannot write to localStorage:', e);
+  validateSetupState() {
+    if (this.players.length < 2) {
+      if (this.dom.setupValidationMsg) this.dom.setupValidationMsg.textContent = 'Minimal harus 2 pemain untuk memulai!';
+      if (this.dom.btnStartGame) this.dom.btnStartGame.disabled = true;
+      return false;
+    }
+    if (this.dom.setupValidationMsg) this.dom.setupValidationMsg.textContent = '';
+    if (this.dom.btnStartGame) this.dom.btnStartGame.disabled = false;
+    return true;
+  }
+
+  updateSetupConfigUI() {
+    if (this.dom.livesSettingGroup) {
+      this.dom.livesSettingGroup.style.display = (this.setupConfig.mode === 'lps') ? 'block' : 'none';
     }
   }
 
-  bindEvents() {
-    // Safe binding helper
-    const on = (el, evt, fn) => {
-      if (el) el.addEventListener(evt, fn);
-    };
+  handleStartGame() {
+    if (!this.validateSetupState()) return;
 
-    // 1. Home Navigation
-    on(this.btnStartSetup, 'click', () => {
-      this.audio.playClick();
-      this.gameSessionType = 'LOCAL';
-      this.showScreen('setup');
-    });
-
-    on(this.btnOpenMultiplayer, 'click', () => {
-      this.audio.playClick();
-      this.gameSessionType = 'NETWORK';
-      this.showScreen('multiChoice');
-    });
-
-    // Also support card clicks if present in the DOM
-    const cardMabar = document.getElementById('card-mode-multiplayer');
-    on(cardMabar, 'click', () => {
-      this.audio.playClick();
-      this.gameSessionType = 'NETWORK';
-      this.showScreen('multiChoice');
-    });
-    const cardPassplay = document.getElementById('card-mode-passplay');
-    on(cardPassplay, 'click', () => {
-      this.audio.playClick();
-      this.gameSessionType = 'LOCAL';
-      this.showScreen('setup');
-    });
-
-    on(this.btnBackMultiToHome, 'click', () => {
-      this.audio.playClick();
-      this.showScreen('home');
-    });
-
-    on(this.btnBackToHome, 'click', () => {
-      this.audio.playClick();
-      this.showScreen('home');
-    });
-
-    on(this.navBrandBtn, 'click', () => {
-      if (this.engine && this.engine.state === 'PLAYING') {
-        this.openModal('pause');
-      } else {
-        this.audio.playClick();
-        this.showScreen('home');
-      }
-    });
-
-    // 2. Modals
-    on(this.btnQuickRules, 'click', () => {
-      this.audio.playClick();
-      this.openModal('howTo');
-    });
-    on(this.btnOpenHowTo, 'click', () => {
-      this.audio.playClick();
-      this.openModal('howTo');
-    });
-    on(this.btnCloseHowTo, 'click', () => this.closeModal('howTo'));
-    on(this.btnCloseHowToBottom, 'click', () => this.closeModal('howTo'));
-
-    on(this.btnHomeSettings, 'click', () => {
-      this.audio.playClick();
-      this.openModal('settings');
-    });
-    on(this.btnOpenSettings, 'click', () => {
-      this.audio.playClick();
-      this.openModal('settings');
-    });
-    on(this.btnCloseSettings, 'click', () => this.closeModal('settings'));
-    on(this.btnCloseSettingsBottom, 'click', () => this.closeModal('settings'));
-
-    // 3. Settings Form
-    this.settingSound.addEventListener('change', (e) => {
-      this.prefs.sound = e.target.checked;
-      this.audio.setEnabled(this.prefs.sound);
-      this.saveData();
-    });
-
-    this.settingVolume.addEventListener('input', (e) => {
-      this.prefs.volume = parseInt(e.target.value, 10);
-      this.audio.setVolume(this.prefs.volume);
-      this.saveData();
-    });
-
-    this.settingAnimations.addEventListener('change', (e) => {
-      this.prefs.animations = e.target.checked;
-      this.saveData();
-    });
-
-    if (this.settingVibration) {
-      this.settingVibration.addEventListener('change', (e) => {
-        this.prefs.vibration = e.target.checked;
-        this.saveData();
-      });
-    }
-
-    this.btnResetStorage.addEventListener('click', () => {
-      if (confirm('Yakin ingin mereset data pemain dan setelan?')) {
-        localStorage.clear();
-        this.players = [
-          { id: 'p1', name: 'Pemain 1' },
-          { id: 'p2', name: 'Pemain 2' }
-        ];
-        this.renderPlayerList();
-        this.showToast('Data berhasil direset.');
-        this.closeModal('settings');
-      }
-    });
-
-    // 4. Pass & Play Player Setup
-    this.formAddPlayer.addEventListener('submit', (e) => {
-      e.preventDefault();
-      this.handleAddPlayer();
-    });
-
-    document.querySelectorAll('.mode-selector .pill-opt').forEach(btn => {
-      btn.addEventListener('click', () => {
-        this.audio.playClick();
-        document.querySelectorAll('.mode-selector .pill-opt').forEach(b => {
-          b.classList.remove('active');
-          b.setAttribute('aria-checked', 'false');
-        });
-        btn.classList.add('active');
-        btn.setAttribute('aria-checked', 'true');
-        this.setupConfig.mode = btn.dataset.mode;
-        this.livesSettingGroup.style.display = (this.setupConfig.mode === 'lps') ? 'block' : 'none';
-      });
-    });
-
-    // Pass & Play Letter Flow Selector
-    document.querySelectorAll('.setup-flow-selector .pill-opt').forEach(btn => {
-      btn.addEventListener('click', () => {
-        this.audio.playClick();
-        document.querySelectorAll('.setup-flow-selector .pill-opt').forEach(b => {
-          b.classList.remove('active');
-          b.setAttribute('aria-checked', 'false');
-        });
-        btn.classList.add('active');
-        btn.setAttribute('aria-checked', 'true');
-        this.setupConfig.letterFlow = btn.dataset.flow || 'chain';
-      });
-    });
-
-    document.querySelectorAll('.timer-grid .chip-opt').forEach(btn => {
-      btn.addEventListener('click', () => {
-        this.audio.playClick();
-        document.querySelectorAll('.timer-grid .chip-opt').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        this.setupConfig.timer = parseInt(btn.dataset.timer, 10);
-      });
-    });
-
-    document.querySelectorAll('.lives-grid .chip-opt').forEach(btn => {
-      btn.addEventListener('click', () => {
-        this.audio.playClick();
-        document.querySelectorAll('.lives-grid .chip-opt').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        this.setupConfig.lives = parseInt(btn.dataset.lives, 10);
-      });
-    });
-
-    document.querySelectorAll('.challenge-grid .chip-opt').forEach(btn => {
-      btn.addEventListener('click', () => {
-        this.audio.playClick();
-        document.querySelectorAll('.challenge-grid .chip-opt').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        this.setupConfig.challenge = btn.dataset.challenge;
-      });
-    });
-
-    this.btnStartGame.addEventListener('click', () => {
-      this.handleStartGame();
-    });
-
-    // 5. Multiplayer (Host / Client) Room Management
-    this.btnChoiceCreateRoom.addEventListener('click', () => {
-      this.audio.playClick();
-      this.handleCreateHostRoom();
-    });
-
-    this.btnChoiceJoinRoom.addEventListener('click', () => {
-      this.audio.playClick();
-      this.showScreen('lobbyClient');
-      this.clientConnectBox.classList.remove('hidden');
-      this.clientWaitingBox.classList.add('hidden');
-    });
-
-    this.btnCopyRoomCode.addEventListener('click', () => {
-      if (this.network.roomCode) {
-        navigator.clipboard.writeText(this.network.roomCode).then(() => {
-          this.showToast(`Kode "${this.network.roomCode}" berhasil disalin!`);
-        }).catch(() => {
-          this.showToast(`Kode Room: ${this.network.roomCode}`);
-        });
-      }
-    });
-
-    if (this.btnShareWa) {
-      this.btnShareWa.addEventListener('click', () => {
-        this.audio.playClick();
-        const code = this.network.roomCode || '';
-        const shareUrl = `${window.location.origin}${window.location.pathname}?room=${code}`;
-        const msg = `Yuk mabar SAMBUNGIN! Game party sambung kata seru bareng aku! 🎮🔥\n\nKlik link ini untuk langsung gabung room:\n${shareUrl}\n\nAtau masukkan Kode Room: ${code}`;
-        const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
-        window.open(waUrl, '_blank');
-      });
-    }
-
-    if (this.btnCopyLink) {
-      this.btnCopyLink.addEventListener('click', () => {
-        this.audio.playClick();
-        const code = this.network.roomCode || '';
-        const shareUrl = `${window.location.origin}${window.location.pathname}?room=${code}`;
-        navigator.clipboard.writeText(shareUrl).then(() => {
-          this.showToast('Link gabung langsung berhasil disalin!');
-        }).catch(() => {
-          this.showToast(`Link: ${shareUrl}`);
-        });
-      });
-    }
-
-    // Reaction Emote Buttons
-    document.querySelectorAll('.btn-emote').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const emoji = btn.dataset.emoji || btn.textContent.trim();
-        this.audio.playPop();
-        this.triggerFloatingEmote(emoji);
-        if (this.gameSessionType === 'NETWORK') {
-          this.network.sendReaction(emoji);
-        }
-      });
-    });
-
-    this.btnLeaveHostRoom.addEventListener('click', () => {
-      this.audio.playClick();
-      this.network.disconnect();
-      this.showScreen('home');
-    });
-
-    this.btnLeaveClientRoom.addEventListener('click', () => {
-      this.audio.playClick();
-      this.network.disconnect();
-      this.showScreen('home');
-    });
-
-    // Host Config Selectors in Lobby
-    document.querySelectorAll('.host-mode-selector .pill-opt').forEach(btn => {
-      btn.addEventListener('click', () => {
-        this.audio.playClick();
-        document.querySelectorAll('.host-mode-selector .pill-opt').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        this.setupConfig.mode = btn.dataset.mode;
-      });
-    });
-
-    // Host Letter Flow Selector in Lobby
-    document.querySelectorAll('.host-flow-selector .pill-opt').forEach(btn => {
-      btn.addEventListener('click', () => {
-        this.audio.playClick();
-        document.querySelectorAll('.host-flow-selector .pill-opt').forEach(b => {
-          b.classList.remove('active');
-          b.setAttribute('aria-checked', 'false');
-        });
-        btn.classList.add('active');
-        btn.setAttribute('aria-checked', 'true');
-        this.setupConfig.letterFlow = btn.dataset.flow || 'chain';
-      });
-    });
-
-    document.querySelectorAll('.host-timer-grid .chip-opt').forEach(btn => {
-      btn.addEventListener('click', () => {
-        this.audio.playClick();
-        document.querySelectorAll('.host-timer-grid .chip-opt').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        this.setupConfig.timer = parseInt(btn.dataset.timer, 10);
-      });
-    });
-
-    document.querySelectorAll('.host-challenge-grid .chip-opt').forEach(btn => {
-      btn.addEventListener('click', () => {
-        this.audio.playClick();
-        document.querySelectorAll('.host-challenge-grid .chip-opt').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        this.setupConfig.challenge = btn.dataset.challenge;
-      });
-    });
-
-    this.btnHostStartGame.addEventListener('click', () => {
-      this.handleHostStartGame();
-    });
-
-    this.formJoinRoom.addEventListener('submit', (e) => {
-      e.preventDefault();
-      this.handleClientJoinRoom();
-    });
-
-    // 6. Ready Screen Button
-    this.btnReadyStart.addEventListener('click', () => {
-      this.audio.playClick();
-      if (this.gameSessionType === 'LOCAL') {
-        this.showScreen('game');
-        this.engine.startActiveTurn();
-      } else if (this.gameSessionType === 'NETWORK') {
-        if (this.network.role === 'HOST') {
-          this.showScreen('game');
-          this.engine.startActiveTurn();
-          this.network.broadcast('REMOTE_START_ACTIVE_TURN', {});
-        } else {
-          // Client sends signal to Host that they are ready to start
-          this.network.sendToHost('CLIENT_READY_TO_START', {});
-        }
-      }
-      setTimeout(() => {
-        this.inputWord.value = '';
-        this.inputWord.focus();
-      }, 100);
-    });
-
-    // 7. Gameplay Input
-    if (this.formSubmitWord) {
-      this.formSubmitWord.addEventListener('submit', (e) => {
-        e.preventDefault();
-        this.handleSubmitWord();
-      });
-    }
-
-    if (this.inputWord) {
-      const blockIfNotMyTurn = (e) => {
-        if (!this.isMyTurnNow()) {
-          e.preventDefault();
-          e.stopPropagation();
-          this.inputWord.readOnly = true;
-          this.inputWord.disabled = true;
-          this.inputWord.blur();
-          return false;
-        }
-      };
-      this.inputWord.addEventListener('keydown', blockIfNotMyTurn);
-      this.inputWord.addEventListener('beforeinput', blockIfNotMyTurn);
-    }
-
-    this.btnUseLifeline.addEventListener('click', () => {
-      this.audio.playClick();
-      if (this.gameSessionType === 'LOCAL') {
-        const used = this.engine.useLifeline();
-        if (used) {
-          this.showToast('Bantuan dipakai! Huruf wajib diubah.');
-          this.updateGameArena();
-        } else {
-          this.showToast('Bantuan sudah habis!');
-        }
-      } else if (this.gameSessionType === 'NETWORK') {
-        if (this.network.role === 'HOST') {
-          const used = this.engine.useLifeline();
-          if (used) {
-            this.showToast('Bantuan dipakai! Huruf diubah.');
-            this.updateGameArena();
-            this.network.broadcast('REMOTE_ARENA_SYNC', {
-              requiredLetter: this.engine.requiredLetter,
-              lifelines: this.engine.getCurrentPlayer().lifelines
-            });
-          }
-        } else {
-          this.network.sendToHost('CLIENT_USE_LIFELINE', {});
-        }
-      }
-    });
-
-    this.btnPauseGame.addEventListener('click', () => {
-      this.audio.playClick();
-      if (this.gameSessionType === 'LOCAL') {
-        this.engine.pauseGame();
-        this.openModal('pause');
-      } else {
-        this.showToast('Jeda dinonaktifkan dalam mode multi-device online.');
-      }
-    });
-
-    this.btnResumeGame.addEventListener('click', () => {
-      this.audio.playClick();
-      this.closeModal('pause');
-      this.engine.resumeGame();
-    });
-
-    this.btnRestartGame.addEventListener('click', () => {
-      this.audio.playClick();
-      this.closeModal('pause');
-      this.handleStartGame();
-    });
-
-    this.btnQuitToHome.addEventListener('click', () => {
-      this.audio.playClick();
-      this.engine.stopTimer();
-      this.closeModal('pause');
-      if (this.gameSessionType === 'NETWORK') {
-        this.network.disconnect();
-      }
-      this.showScreen('home');
-    });
-
-    // 8. Results Screen
-    this.btnPlayAgain.addEventListener('click', () => {
-      this.audio.playClick();
-      if (this.gameSessionType === 'LOCAL') {
-        this.handleStartGame();
-      } else if (this.gameSessionType === 'NETWORK' && this.network.role === 'HOST') {
-        this.handleHostStartGame();
-      }
-    });
-
-    this.btnBackToMenu.addEventListener('click', () => {
-      this.audio.playClick();
-      if (this.gameSessionType === 'NETWORK') {
-        this.network.disconnect();
-      }
-      this.showScreen('home');
+    this.audio.playClick();
+    this.clientUsedWords = new Set();
+    this.engine.startNewGame(this.players, {
+      mode: this.setupConfig.mode,
+      timerDuration: this.setupConfig.timer,
+      initialLives: this.setupConfig.lives,
+      challengeDifficulty: this.setupConfig.challenge,
+      letterFlow: this.setupConfig.letterFlow || 'chain'
     });
   }
 
   setupEngineHooks() {
     this.engine.onTurnReady = (data) => {
       if (this.gameSessionType === 'NETWORK') {
-        // Multi-device: NEVER pause or show screen-ready!
-        // Host immediately triggers active turn
         if (this.network.role === 'HOST') {
           this.engine.startActiveTurn();
         }
         return;
       }
-
-      // Pass & Play (1 HP): Show ready overlay for safe physical handoff
       this.renderReadyScreen(data);
       this.showScreen('ready');
     };
@@ -781,7 +269,7 @@ class SambunginApp {
       this.setWordFeedback(`Benar! +${data.points} Poin`, true);
       this.renderWordHistory();
       this.renderMiniRoster();
-      this.inputWord.value = '';
+      if (this.dom.inputWord) this.dom.inputWord.value = '';
       this.triggerHaptic('correct');
 
       if (this.gameSessionType === 'NETWORK' && this.network.role === 'HOST') {
@@ -829,7 +317,6 @@ class SambunginApp {
   }
 
   setupNetworkHooks() {
-    // When a player joins Host's lobby
     this.network.onPlayerJoined = (playerObj) => {
       this.audio.playCorrect();
       this.showToast(`👋 ${playerObj.name} bergabung ke Room!`);
@@ -837,14 +324,12 @@ class SambunginApp {
       this.broadcastLobbyRoster();
     };
 
-    // When a player leaves
     this.network.onPlayerLeft = (playerObj) => {
       this.showToast(`🚪 ${playerObj.name} keluar dari Room.`);
       this.renderHostLobbyPlayers();
       this.broadcastLobbyRoster();
     };
 
-    // Handle messages received by Host or Client
     this.network.onMessage = (type, payload, senderPeerId) => {
       this.handleNetworkMessage(type, payload, senderPeerId);
     };
@@ -856,14 +341,12 @@ class SambunginApp {
   }
 
   handleNetworkMessage(type, payload, senderPeerId) {
-    // HOST RECEIVES MESSAGES FROM CLIENT
     if (this.network.role === 'HOST') {
       if (type === 'SUBMIT_WORD') {
         const currentActive = this.engine.getCurrentPlayer();
         if (currentActive && currentActive.id === senderPeerId) {
           const res = this.engine.submitWord(payload.word);
           if (!res.success) {
-            // Send error feedback directly back to specific client
             this.network.sendToClient(senderPeerId, 'WORD_ERROR_FEEDBACK', { message: res.message, word: payload.word });
           }
         }
@@ -882,12 +365,10 @@ class SambunginApp {
       } else if (type === 'REACTION_EMOTE') {
         this.triggerFloatingEmote(payload.emoji);
         this.audio.playPop();
-        // Relay reaction to all other connected clients
         this.network.broadcast('REACTION_EMOTE', payload, senderPeerId);
       }
     }
 
-    // CLIENT RECEIVES MESSAGES FROM HOST
     if (this.network.role === 'CLIENT') {
       switch (type) {
         case 'LOBBY_ROSTER_UPDATE':
@@ -914,9 +395,7 @@ class SambunginApp {
           this.setWordFeedback(payload.message, false);
           this.showToast(`❌ ${payload.message}`);
           this.shakeInput();
-          if (this.inputWord) {
-            this.inputWord.select();
-          }
+          if (this.dom.inputWord) this.dom.inputWord.select();
           this.triggerHaptic('error');
           break;
 
@@ -942,11 +421,9 @@ class SambunginApp {
           break;
 
         case 'REMOTE_ARENA_SYNC':
-          this.gameRequiredLetter.textContent = payload.requiredLetter.toUpperCase();
-          if (this.inputPrefixLetter) {
-            this.inputPrefixLetter.textContent = payload.requiredLetter.toUpperCase();
-          }
-          this.lifelineCount.textContent = payload.lifelines;
+          if (this.dom.gameRequiredLetter) this.dom.gameRequiredLetter.textContent = payload.requiredLetter.toUpperCase();
+          if (this.dom.inputPrefixLetter) this.dom.inputPrefixLetter.textContent = payload.requiredLetter.toUpperCase();
+          if (this.dom.lifelineCount) this.dom.lifelineCount.textContent = payload.lifelines;
           break;
 
         case 'REACTION_EMOTE':
@@ -968,16 +445,15 @@ class SambunginApp {
     }
   }
 
-  /* ================= MULTIPLAYER HOST FLOW ================= */
   async handleCreateHostRoom() {
     const hostName = prompt('Ketik nama kamu sebagai Host:', 'Host') || 'Host';
     this.showScreen('lobbyHost');
-    this.hostRoomCodeDisplay.textContent = '...';
-    this.hostValidationMsg.textContent = 'Menghubungkan ke jaringan P2P...';
+    if (this.dom.hostRoomCodeDisplay) this.dom.hostRoomCodeDisplay.textContent = '...';
+    if (this.dom.hostValidationMsg) this.dom.hostValidationMsg.textContent = 'Menghubungkan ke jaringan P2P...';
 
     try {
       const code = await this.network.createRoom(hostName);
-      this.hostRoomCodeDisplay.textContent = code;
+      if (this.dom.hostRoomCodeDisplay) this.dom.hostRoomCodeDisplay.textContent = code;
       this.myNetworkId = this.network.myPeerId;
       this.renderHostLobbyPlayers();
       this.showToast(`Room aktif! Bagikan kode ${code} ke teman.`);
@@ -985,50 +461,6 @@ class SambunginApp {
       alert(`Gagal membuat room: ${err.message}`);
       this.showScreen('multiChoice');
     }
-  }
-
-  renderHostLobbyPlayers() {
-    const players = [
-      { id: this.network.myPeerId, name: `${this.network.myName} (Host)` }
-    ];
-
-    this.network.clients.forEach(c => {
-      players.push({ id: c.id, name: c.name });
-    });
-
-    this.hostLobbyPlayersList.innerHTML = '';
-    this.hostPlayerCountBadge.textContent = `${players.length} Pemain`;
-
-    players.forEach((p, idx) => {
-      const row = document.createElement('div');
-      row.className = 'lobby-player-pill';
-      row.innerHTML = `
-        <span style="font-weight: 700;">${idx + 1}. ${escapeHtml(p.name)}</span>
-        <span class="lobby-player-role">${idx === 0 ? '👑 HOST' : 'READY ✅'}</span>
-      `;
-      this.hostLobbyPlayersList.appendChild(row);
-    });
-
-    if (players.length >= 2) {
-      this.hostValidationMsg.textContent = 'Room siap! Klik tombol di bawah untuk mulai.';
-      this.hostValidationMsg.style.color = 'var(--color-success)';
-      this.btnHostStartGame.disabled = false;
-    } else {
-      this.hostValidationMsg.textContent = 'Tunggu minimal 1 teman bergabung...';
-      this.hostValidationMsg.style.color = 'var(--color-warning)';
-      this.btnHostStartGame.disabled = true;
-    }
-  }
-
-  broadcastLobbyRoster() {
-    const players = [
-      { id: this.network.myPeerId, name: `${this.network.myName} (Host)` }
-    ];
-    this.network.clients.forEach(c => {
-      players.push({ id: c.id, name: c.name });
-    });
-
-    this.network.broadcast('LOBBY_ROSTER_UPDATE', { players });
   }
 
   handleHostStartGame() {
@@ -1060,50 +492,40 @@ class SambunginApp {
     });
   }
 
-  /* ================= MULTIPLAYER CLIENT FLOW ================= */
   async handleClientJoinRoom() {
-    const name = this.inputClientName.value.trim();
-    const code = this.inputClientRoomCode.value.trim().toUpperCase();
-    this.clientJoinError.textContent = '';
+    const name = this.dom.inputClientName ? this.dom.inputClientName.value.trim() : '';
+    const code = this.dom.inputClientRoomCode ? this.dom.inputClientRoomCode.value.trim().toUpperCase() : '';
+    if (this.dom.clientJoinError) this.dom.clientJoinError.textContent = '';
 
     if (!name) {
-      this.clientJoinError.textContent = 'Nama kamu tidak boleh kosong!';
+      if (this.dom.clientJoinError) this.dom.clientJoinError.textContent = 'Nama kamu tidak boleh kosong!';
       return;
     }
     if (!code || code.length < 3) {
-      this.clientJoinError.textContent = 'Masukkan kode room 4 karakter!';
+      if (this.dom.clientJoinError) this.dom.clientJoinError.textContent = 'Masukkan kode room 4 karakter!';
       return;
     }
 
-    this.btnSubmitJoinRoom.disabled = true;
-    this.clientJoinError.textContent = 'Menghubungkan ke Host...';
-    this.clientJoinError.style.color = 'var(--color-accent)';
+    if (this.dom.btnSubmitJoinRoom) this.dom.btnSubmitJoinRoom.disabled = true;
+    if (this.dom.clientJoinError) {
+      this.dom.clientJoinError.textContent = 'Menghubungkan ke Host...';
+      this.dom.clientJoinError.style.color = 'var(--color-accent)';
+    }
 
     try {
       await this.network.joinRoom(code, name);
       this.myNetworkId = this.network.myPeerId;
-      this.clientConnectBox.classList.add('hidden');
-      this.clientWaitingBox.classList.remove('hidden');
-      this.clientRoomTitle.textContent = `Room: ${code}`;
+      if (this.dom.clientConnectBox) this.dom.clientConnectBox.classList.add('hidden');
+      if (this.dom.clientWaitingBox) this.dom.clientWaitingBox.classList.remove('hidden');
+      if (this.dom.clientRoomTitle) this.dom.clientRoomTitle.textContent = `Room: ${code}`;
       this.showToast(`Berhasil masuk ke Room ${code}!`);
     } catch (err) {
-      this.clientJoinError.textContent = err.message || 'Gagal terhubung ke room.';
-      this.clientJoinError.style.color = 'var(--color-danger)';
-      this.btnSubmitJoinRoom.disabled = false;
+      if (this.dom.clientJoinError) {
+        this.dom.clientJoinError.textContent = err.message || 'Gagal terhubung ke room.';
+        this.dom.clientJoinError.style.color = 'var(--color-danger)';
+      }
+      if (this.dom.btnSubmitJoinRoom) this.dom.btnSubmitJoinRoom.disabled = false;
     }
-  }
-
-  renderClientLobbyPlayers(players) {
-    this.clientLobbyPlayersList.innerHTML = '';
-    players.forEach((p, idx) => {
-      const row = document.createElement('div');
-      row.className = 'lobby-player-pill';
-      row.innerHTML = `
-        <span style="font-weight: 700;">${idx + 1}. ${escapeHtml(p.name)}</span>
-        <span class="lobby-player-role">${idx === 0 ? '👑 HOST' : 'TERHUBUNG'}</span>
-      `;
-      this.clientLobbyPlayersList.appendChild(row);
-    });
   }
 
   handleClientTurnStart(payload) {
@@ -1111,27 +533,27 @@ class SambunginApp {
     const { player, requiredLetter, prevWord, challenge, players } = payload;
     this.currentTurnPlayer = player;
 
-    this.gameActivePlayerName.textContent = player.name;
+    if (this.dom.gameActivePlayerName) this.dom.gameActivePlayerName.textContent = player.name;
 
-    // Previous word & required letter
-    if (prevWord && prevWord.length > 1) {
-      const stem = prevWord.slice(0, -1);
-      const last = prevWord.slice(-1);
-      this.gamePrevWord.innerHTML = `<span class="prev-stem">${escapeHtml(stem.toUpperCase())}</span><span class="prev-last-char">${escapeHtml(last.toUpperCase())}</span>`;
-    } else {
-      this.gamePrevWord.innerHTML = `<span class="prev-last-char">${escapeHtml((prevWord || '').toUpperCase())}</span>`;
+    if (this.dom.gamePrevWord) {
+      if (prevWord && prevWord.length > 1) {
+        const stem = prevWord.slice(0, -1);
+        const last = prevWord.slice(-1);
+        this.dom.gamePrevWord.innerHTML = `<span class="prev-stem">${escapeHtml(stem.toUpperCase())}</span><span class="prev-last-char">${escapeHtml(last.toUpperCase())}</span>`;
+      } else {
+        this.dom.gamePrevWord.innerHTML = `<span class="prev-last-char">${escapeHtml((prevWord || '').toUpperCase())}</span>`;
+      }
     }
 
-    this.gameRequiredLetter.textContent = (requiredLetter || '').toUpperCase();
+    if (this.dom.gameRequiredLetter) this.dom.gameRequiredLetter.textContent = (requiredLetter || '').toUpperCase();
 
-    // Challenge Banner
     if (challenge) {
-      this.gameChallengeBanner.classList.remove('hidden');
-      this.challengeIcon.textContent = challenge.icon || '🎯';
-      this.challengeTitle.textContent = challenge.title;
-      this.challengeInstruction.textContent = challenge.instruction;
+      if (this.dom.gameChallengeBanner) this.dom.gameChallengeBanner.classList.remove('hidden');
+      if (this.dom.challengeIcon) this.dom.challengeIcon.textContent = challenge.icon || '🎯';
+      if (this.dom.challengeTitle) this.dom.challengeTitle.textContent = challenge.title;
+      if (this.dom.challengeInstruction) this.dom.challengeInstruction.textContent = challenge.instruction;
     } else {
-      this.gameChallengeBanner.classList.add('hidden');
+      if (this.dom.gameChallengeBanner) this.dom.gameChallengeBanner.classList.add('hidden');
     }
 
     this.updateTurnActiveState(player, requiredLetter);
@@ -1139,23 +561,25 @@ class SambunginApp {
   }
 
   renderClientWordHistory(history) {
-    this.historyCount.textContent = history.length;
+    if (!this.dom.historyCount || !this.dom.wordHistoryList) return;
+    this.dom.historyCount.textContent = history.length;
     if (!history.length) {
-      this.wordHistoryList.innerHTML = '<span class="history-empty">Belum ada kata terhubung</span>';
+      this.dom.wordHistoryList.innerHTML = '<span class="history-empty">Belum ada kata terhubung</span>';
       return;
     }
 
-    this.wordHistoryList.innerHTML = '';
+    this.dom.wordHistoryList.innerHTML = '';
     history.forEach((item, index) => {
       const chip = document.createElement('span');
       chip.className = `history-tag ${index === 0 ? 'latest' : ''}`;
       chip.textContent = `${item.word.toUpperCase()} (${item.player})`;
-      this.wordHistoryList.appendChild(chip);
+      this.dom.wordHistoryList.appendChild(chip);
     });
   }
 
   renderClientMiniRoster(players) {
-    this.gameMiniRoster.innerHTML = '';
+    if (!this.dom.gameMiniRoster) return;
+    this.dom.gameMiniRoster.innerHTML = '';
     players.forEach(p => {
       const pill = document.createElement('div');
       const isEliminated = p.status === 'ELIMINATED';
@@ -1166,34 +590,33 @@ class SambunginApp {
         <span>${escapeHtml(p.name)}</span>
         <span>${p.score || 0}⭐</span>
       `;
-      this.gameMiniRoster.appendChild(pill);
+      this.dom.gameMiniRoster.appendChild(pill);
     });
   }
 
-  /* ================= PASS & PLAY LOGIC ================= */
   handleAddPlayer() {
-    const raw = this.inputPlayerName.value.trim();
-    this.addPlayerError.textContent = '';
+    const raw = this.dom.inputPlayerName ? this.dom.inputPlayerName.value.trim() : '';
+    if (this.dom.addPlayerError) this.dom.addPlayerError.textContent = '';
 
     if (!raw) {
-      this.addPlayerError.textContent = 'Nama pemain tidak boleh kosong!';
+      if (this.dom.addPlayerError) this.dom.addPlayerError.textContent = 'Nama pemain tidak boleh kosong!';
       return;
     }
     if (raw.length > 16) {
-      this.addPlayerError.textContent = 'Nama pemain maksimal 16 karakter!';
+      if (this.dom.addPlayerError) this.dom.addPlayerError.textContent = 'Nama pemain maksimal 16 karakter!';
       return;
     }
     if (this.players.some(p => p.name.toLowerCase() === raw.toLowerCase())) {
-      this.addPlayerError.textContent = 'Nama pemain sudah ada, gunakan nama lain!';
+      if (this.dom.addPlayerError) this.dom.addPlayerError.textContent = 'Nama pemain sudah ada, gunakan nama lain!';
       return;
     }
     if (this.players.length >= 8) {
-      this.addPlayerError.textContent = 'Maksimal 8 pemain untuk mode pass-and-play!';
+      if (this.dom.addPlayerError) this.dom.addPlayerError.textContent = 'Maksimal 8 pemain untuk mode pass-and-play!';
       return;
     }
 
     this.players.push({ id: `p_${Date.now()}`, name: raw });
-    this.inputPlayerName.value = '';
+    if (this.dom.inputPlayerName) this.dom.inputPlayerName.value = '';
     this.saveData();
     this.renderPlayerList();
     this.audio.playClick();
@@ -1227,216 +650,6 @@ class SambunginApp {
     }
   }
 
-  renderPlayerList() {
-    this.playerListContainer.innerHTML = '';
-    this.playerCountBadge.textContent = `${this.players.length} Pemain`;
-    const avatarColors = ['#6366F1', '#EC4899', '#10B981', '#F59E0B', '#8B5CF6', '#06B6D4', '#EF4444', '#3B82F6'];
-
-    this.players.forEach((p, index) => {
-      const row = document.createElement('div');
-      row.className = 'player-item-row';
-      const initial = p.name.charAt(0).toUpperCase();
-      const color = avatarColors[index % avatarColors.length];
-
-      row.innerHTML = `
-        <div class="player-identity">
-          <div class="player-avatar-badge" style="background-color: ${color}">${initial}</div>
-          <span class="player-name-text">${escapeHtml(p.name)}</span>
-        </div>
-        <div class="player-row-actions">
-          <button type="button" class="btn-icon-subtle btn-edit" title="Edit" data-id="${p.id}">✏️</button>
-          <button type="button" class="btn-icon-subtle btn-delete" title="Hapus" data-id="${p.id}" ${this.players.length <= 2 ? 'disabled style="opacity:0.3;cursor:not-allowed;"' : ''}>🗑️</button>
-        </div>
-      `;
-
-      row.querySelector('.btn-edit').addEventListener('click', () => this.handleEditPlayer(p.id));
-      const delBtn = row.querySelector('.btn-delete');
-      if (this.players.length > 2) {
-        delBtn.addEventListener('click', () => this.handleDeletePlayer(p.id));
-      }
-
-      this.playerListContainer.appendChild(row);
-    });
-
-    this.validateSetupState();
-  }
-
-  validateSetupState() {
-    if (this.players.length < 2) {
-      this.setupValidationMsg.textContent = 'Minimal harus 2 pemain untuk memulai!';
-      this.btnStartGame.disabled = true;
-      return false;
-    }
-    this.setupValidationMsg.textContent = '';
-    this.btnStartGame.disabled = false;
-    return true;
-  }
-
-  updateSetupConfigUI() {
-    this.livesSettingGroup.style.display = (this.setupConfig.mode === 'lps') ? 'block' : 'none';
-  }
-
-  handleStartGame() {
-    if (!this.validateSetupState()) return;
-
-    this.audio.playClick();
-    this.clientUsedWords = new Set();
-    this.engine.startNewGame(this.players, {
-      mode: this.setupConfig.mode,
-      timerDuration: this.setupConfig.timer,
-      initialLives: this.setupConfig.lives,
-      challengeDifficulty: this.setupConfig.challenge,
-      letterFlow: this.setupConfig.letterFlow || 'chain'
-    });
-  }
-
-  /* ================= READY & GAMEPLAY ================= */
-  renderReadyScreen(data) {
-    const { player, requiredLetter, challenge, turnDuration } = data;
-
-    this.readyPlayerAvatar.textContent = player.name.charAt(0).toUpperCase();
-    this.readyPlayerAvatar.style.backgroundColor = player.color || '#6366F1';
-    this.readyPlayerName.textContent = player.name;
-    this.readyRequiredLetter.textContent = requiredLetter.toUpperCase();
-    this.readyTimerDesc.textContent = `${turnDuration} Detik`;
-
-    if (this.gameSessionType === 'NETWORK') {
-      const isMyTurn = (player.id === this.myNetworkId);
-      this.readyPromptInstruction.innerHTML = isMyTurn
-        ? `🔥 Ini adalah <strong>giliran kamu</strong>! Tekan tombol di bawah untuk mulai menjawab.`
-        : `⏳ Giliran <strong>${player.name}</strong>. Bersiaplah memperhatikan kata berikutnya!`;
-    } else {
-      this.readyPromptInstruction.innerHTML = `Pastikan perangkat sudah di tanganmu. Waktu <strong>TIDAK AKAN BERJALAN</strong> sebelum kamu menekan tombol di bawah!`;
-    }
-
-    if (challenge) {
-      this.readyChallengeDesc.textContent = `${challenge.icon || '🎯'} ${challenge.title} — ${challenge.instruction}`;
-      this.readyChallengeDesc.style.color = 'var(--color-pink)';
-    } else {
-      this.readyChallengeDesc.textContent = 'Standar (Tanpa Batasan Khusus)';
-      this.readyChallengeDesc.style.color = 'var(--text-muted)';
-    }
-  }
-
-  updateGameArena() {
-    const player = this.engine.getCurrentPlayer();
-    if (!player) return;
-
-    this.gameActivePlayerName.textContent = player.name;
-
-    if (this.engine.config.mode === 'freeplay') {
-      this.gamePlayerLivesBadge.style.display = 'none';
-    } else {
-      this.gamePlayerLivesBadge.style.display = 'inline-flex';
-      this.gamePlayerLivesVal.textContent = player.lives;
-    }
-    this.gamePlayerScoreVal.textContent = player.score;
-
-    const challenge = this.engine.activeChallenge;
-    if (challenge) {
-      this.gameChallengeBanner.classList.remove('hidden');
-      this.challengeIcon.textContent = challenge.icon || '🎯';
-      this.challengeTitle.textContent = challenge.title;
-      this.challengeInstruction.textContent = challenge.instruction;
-    } else {
-      this.gameChallengeBanner.classList.add('hidden');
-    }
-
-    const prev = this.engine.currentWord;
-    if (prev.length > 1) {
-      const stem = prev.slice(0, -1);
-      const last = prev.slice(-1);
-      this.gamePrevWord.innerHTML = `<span class="prev-stem">${escapeHtml(stem.toUpperCase())}</span><span class="prev-last-char">${escapeHtml(last.toUpperCase())}</span>`;
-    } else {
-      this.gamePrevWord.innerHTML = `<span class="prev-last-char">${escapeHtml(prev.toUpperCase())}</span>`;
-    }
-
-    this.gameRequiredLetter.textContent = this.engine.requiredLetter.toUpperCase();
-    if (this.inputPrefixLetter) {
-      this.inputPrefixLetter.textContent = this.engine.requiredLetter.toUpperCase();
-    }
-
-    this.lifelineCount.textContent = player.lifelines;
-    this.btnUseLifeline.disabled = (player.lifelines <= 0 && !(challenge && challenge.freeLifeline));
-
-    this.wordFeedbackMsg.textContent = '';
-    this.wordFeedbackMsg.className = 'word-feedback';
-
-    this.updateTurnActiveState(player, this.engine.requiredLetter);
-  }
-
-  updateTurnActiveState(player, requiredLetter) {
-    if (!player) return;
-
-    this.currentTurnPlayer = player;
-    const isMyTurn = (this.gameSessionType === 'LOCAL' || player.id === this.myNetworkId);
-    const req = (requiredLetter || '').toUpperCase();
-
-    // Update auto-prefix badge
-    if (this.inputPrefixLetter) {
-      this.inputPrefixLetter.textContent = req;
-    }
-
-    if (this.gameTurnBanner && this.bannerMainText) {
-      const badgeEl = this.gameTurnBanner.querySelector('.banner-badge');
-      if (isMyTurn) {
-        this.gameTurnBanner.className = 'turn-banner-box banner-active-turn';
-        if (badgeEl) badgeEl.textContent = '🔥 GILIRAN KAMU!';
-        this.bannerMainText.textContent = `Ketik kata berawalan ${req}!`;
-      } else {
-        this.gameTurnBanner.className = 'turn-banner-box banner-spectator';
-        if (badgeEl) badgeEl.textContent = '👀 SEDANG MENONTON';
-        this.bannerMainText.textContent = `Menunggu ${player.name} berpikir...`;
-      }
-    }
-
-    // Toggle Input form vs Spectator reaction box with strict mobile lockdown
-    if (isMyTurn) {
-      if (this.formSubmitWord) {
-        this.formSubmitWord.style.display = 'block';
-        this.formSubmitWord.classList.remove('hidden');
-      }
-      if (this.spectatorReactionBox) {
-        this.spectatorReactionBox.style.display = 'none';
-        this.spectatorReactionBox.classList.add('hidden');
-      }
-      if (this.inputWord) {
-        this.inputWord.disabled = false;
-        this.inputWord.readOnly = false;
-        this.inputWord.value = '';
-        this.inputWord.placeholder = 'Ketik kelanjutannya...';
-      }
-      if (this.btnSubmitWord) this.btnSubmitWord.disabled = false;
-      if (this.btnUseLifeline) this.btnUseLifeline.disabled = (player.lifelines <= 0);
-      this.triggerHaptic('turn');
-      setTimeout(() => {
-        if (this.inputWord && !this.inputWord.disabled && !this.inputWord.readOnly) {
-          this.inputWord.focus();
-        }
-      }, 100);
-    } else {
-      if (this.formSubmitWord) {
-        this.formSubmitWord.style.display = 'none';
-        this.formSubmitWord.classList.add('hidden');
-      }
-      if (this.spectatorReactionBox) {
-        this.spectatorReactionBox.style.display = 'block';
-        this.spectatorReactionBox.classList.remove('hidden');
-        if (this.spectatorStatusText) {
-          this.spectatorStatusText.innerHTML = `<span>⏳ Giliran <strong>${escapeHtml(player.name)}</strong> (${player.lives || 0}❤️). Beri reaksi:</span>`;
-        }
-      }
-      if (this.inputWord) {
-        this.inputWord.readOnly = true;
-        this.inputWord.disabled = true;
-        this.inputWord.value = '';
-        this.inputWord.blur();
-      }
-      if (this.btnSubmitWord) this.btnSubmitWord.disabled = true;
-      if (this.btnUseLifeline) this.btnUseLifeline.disabled = true;
-    }
-  }
-
   isMyTurnNow() {
     if (this.gameSessionType === 'LOCAL') return true;
     if (this.network && this.network.role === 'HOST') {
@@ -1447,7 +660,7 @@ class SambunginApp {
   }
 
   shakeInput() {
-    const target = this.inputWrapper || this.inputWord;
+    const target = this.dom.inputWrapper || this.dom.inputWord;
     if (target) {
       target.classList.remove('input-error-shake');
       void target.offsetWidth;
@@ -1464,58 +677,36 @@ class SambunginApp {
     const req = (reqLetter || '').trim().toLowerCase();
     if (!req) return clean;
 
-    // If player already typed the required initial letter (e.g. "nasi" when required is "n")
     if (clean.startsWith(req)) {
       return clean;
     }
 
-    // Check against wordValidator
     const validator = this.validator || (this.engine ? this.engine.validator : null);
     if (validator && validator.wordsSet) {
-      // If player only typed remainder/suffix (e.g. "asi" when required is "n", candidate is "nasi")
       const candidateWithPrefix = req + clean;
       if (validator.wordsSet.has(candidateWithPrefix)) {
         return candidateWithPrefix;
       }
-      // If player typed a valid dictionary word that starts with another letter (e.g. "makan")
       if (validator.wordsSet.has(clean)) {
-        return clean; // Let validator clearly explain: "Kata 'MAKAN' diawali huruf 'M', padahal giliran ini wajib huruf 'N'!"
+        return clean;
       }
     }
 
-    // Default: prepend required prefix
     return req + clean;
-  }
-
-  updateTimerDisplay(seconds, fraction) {
-    this.timerSeconds.textContent = seconds;
-    this.timerProgressBar.style.width = `${Math.max(0, fraction * 100)}%`;
-
-    if (seconds <= 3) {
-      this.timerCircle.classList.add('timer-critical');
-      this.timerProgressBar.classList.add('progress-critical');
-      this.audio.playTick(true);
-    } else {
-      this.timerCircle.classList.remove('timer-critical');
-      this.timerProgressBar.classList.remove('progress-critical');
-      if (seconds <= 5) {
-        this.audio.playTick(false);
-      }
-    }
   }
 
   handleSubmitWord() {
     if (!this.isMyTurnNow()) {
       this.showToast('⏳ Bukan giliranmu menjawab!');
-      if (this.inputWord) {
-        this.inputWord.readOnly = true;
-        this.inputWord.disabled = true;
-        this.inputWord.blur();
+      if (this.dom.inputWord) {
+        this.dom.inputWord.readOnly = true;
+        this.dom.inputWord.disabled = true;
+        this.dom.inputWord.blur();
       }
       return;
     }
 
-    const raw = (this.inputWord ? this.inputWord.value : '').trim();
+    const raw = (this.dom.inputWord ? this.dom.inputWord.value : '').trim();
     if (!raw) {
       this.showToast('⚠️ Ketik kata terlebih dahulu!');
       this.shakeInput();
@@ -1524,17 +715,16 @@ class SambunginApp {
 
     const reqLetter = (this.engine && this.engine.requiredLetter)
       ? this.engine.requiredLetter
-      : (this.gameRequiredLetter ? this.gameRequiredLetter.textContent : '');
+      : (this.dom.gameRequiredLetter ? this.dom.gameRequiredLetter.textContent : '');
     const resolvedWord = this.resolveSubmittedWord(raw, reqLetter);
 
-    // Client-side instant duplicate check if known
     if (this.gameSessionType === 'NETWORK' && this.network.role === 'CLIENT' && this.clientUsedWords && this.clientUsedWords.has(resolvedWord)) {
       const msg = `Kata "${resolvedWord.toUpperCase()}" sudah pernah digunakan dalam game ini!`;
       this.audio.playError();
       this.setWordFeedback(msg, false);
       this.showToast(`❌ ${msg}`);
       this.shakeInput();
-      if (this.inputWord) this.inputWord.select();
+      if (this.dom.inputWord) this.dom.inputWord.select();
       return;
     }
 
@@ -1542,13 +732,13 @@ class SambunginApp {
       const res = this.engine.submitWord(resolvedWord);
       if (res.handled) {
         if (res.success) {
-          this.inputWord.blur();
+          if (this.dom.inputWord) this.dom.inputWord.blur();
         } else {
           this.audio.playError();
           this.setWordFeedback(res.message, false);
           this.showToast(`❌ ${res.message}`);
           this.shakeInput();
-          this.inputWord.select();
+          if (this.dom.inputWord) this.dom.inputWord.select();
         }
       }
     } else if (this.gameSessionType === 'NETWORK') {
@@ -1559,203 +749,13 @@ class SambunginApp {
           this.setWordFeedback(res.message, false);
           this.showToast(`❌ ${res.message}`);
           this.shakeInput();
-          this.inputWord.select();
+          if (this.dom.inputWord) this.dom.inputWord.select();
         }
       } else {
-        // Send resolved word to Host for authoritative validation
         this.network.sendToHost('SUBMIT_WORD', { word: resolvedWord });
       }
     }
   }
-
-  setWordFeedback(msg, isSuccess) {
-    this.wordFeedbackMsg.textContent = msg;
-    this.wordFeedbackMsg.className = isSuccess
-      ? 'word-feedback feedback-success'
-      : 'word-feedback feedback-error';
-  }
-
-  renderWordHistory() {
-    this.historyCount.textContent = this.engine.wordHistory.length;
-    if (!this.engine.wordHistory.length) {
-      this.wordHistoryList.innerHTML = '<span class="history-empty">Belum ada kata terhubung</span>';
-      return;
-    }
-
-    this.wordHistoryList.innerHTML = '';
-    this.engine.wordHistory.forEach((item, index) => {
-      const chip = document.createElement('span');
-      chip.className = `history-tag ${index === 0 ? 'latest' : ''}`;
-      chip.textContent = `${item.word.toUpperCase()} (${item.player})`;
-      this.wordHistoryList.appendChild(chip);
-    });
-  }
-
-  renderMiniRoster() {
-    this.gameMiniRoster.innerHTML = '';
-    const current = this.engine.getCurrentPlayer();
-
-    this.engine.players.forEach(p => {
-      const pill = document.createElement('div');
-      const isActive = current && current.id === p.id;
-      const isEliminated = p.status === 'ELIMINATED';
-
-      pill.className = `mini-player-pill ${isActive ? 'active' : ''} ${isEliminated ? 'eliminated' : ''}`;
-      pill.innerHTML = `
-        <span class="mini-dot" style="background-color: ${p.color}"></span>
-        <span>${escapeHtml(p.name)}</span>
-        <span>${this.engine.config.mode === 'freeplay' ? `${p.score}⭐` : `${p.lives}❤️`}</span>
-      `;
-      this.gameMiniRoster.appendChild(pill);
-    });
-  }
-
-  renderResultsScreen(summary) {
-    const { winner, players, totalWords, roundsPlayed, longestWord } = summary;
-
-    const modeLabels = {
-      lps: 'Mode Last Player Standing',
-      freeplay: 'Mode Free Play (Skor Terbanyak)',
-      suddendeath: 'Mode Sudden Death'
-    };
-    this.resultsModeDesc.textContent = modeLabels[this.engine.config.mode] || 'Hasil Sesi Permainan';
-
-    if (winner) {
-      this.resultsWinnerAvatar.textContent = '👑';
-      this.resultsWinnerName.textContent = winner.name;
-      this.resultsWinnerLabel.textContent = this.engine.config.mode === 'freeplay'
-        ? `JUARA DENGAN ${winner.score} POIN!`
-        : 'JUARA BERTAHAN TERAKHIR!';
-    } else {
-      this.resultsWinnerAvatar.textContent = '🤝';
-      this.resultsWinnerName.textContent = 'Hasil Seri';
-      this.resultsWinnerLabel.textContent = 'Semua pemain gugur bersamaan!';
-    }
-
-    this.resultsLeaderboardList.innerHTML = '';
-    players.forEach((p, idx) => {
-      const item = document.createElement('div');
-      item.className = `leaderboard-item ${idx === 0 ? 'rank-1' : ''}`;
-      item.innerHTML = `
-        <span>#${idx + 1} <strong>${escapeHtml(p.name)}</strong></span>
-        <span>${p.score} Poin (${p.status === 'ELIMINATED' ? 'Gugur' : 'Bertahan'})</span>
-      `;
-      this.resultsLeaderboardList.appendChild(item);
-    });
-
-    this.statTotalWords.textContent = totalWords;
-    this.statLongestWord.textContent = longestWord;
-    this.statRoundsCount.textContent = roundsPlayed;
-  }
-
-  showScreen(name) {
-    if (this.confettiAnimationId) {
-      cancelAnimationFrame(this.confettiAnimationId);
-      this.confettiAnimationId = null;
-      if (this.confettiCanvas) {
-        const ctx = this.confettiCanvas.getContext('2d');
-        ctx.clearRect(0, 0, this.confettiCanvas.width, this.confettiCanvas.height);
-      }
-    }
-
-    Object.values(this.screens).forEach(scr => {
-      if (scr) scr.classList.remove('active');
-    });
-    if (this.screens[name]) {
-      this.screens[name].classList.add('active');
-    }
-  }
-
-  openModal(name) {
-    if (this.modals[name]) {
-      this.modals[name].classList.remove('hidden');
-    }
-  }
-
-  closeModal(name) {
-    if (this.modals[name]) {
-      this.modals[name].classList.add('hidden');
-    }
-  }
-
-  showToast(msg) {
-    const toast = document.createElement('div');
-    toast.className = 'toast';
-    toast.textContent = msg;
-    this.toastContainer.appendChild(toast);
-    setTimeout(() => {
-      toast.remove();
-    }, 2500);
-  }
-
-  launchConfetti() {
-    if (!this.confettiCanvas) return;
-    const canvas = this.confettiCanvas;
-    const ctx = canvas.getContext('2d');
-
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    const particles = [];
-    const colors = ['#FBBF24', '#F59E0B', '#6366F1', '#EC4899', '#10B981', '#38BDF8'];
-
-    for (let i = 0; i < 90; i++) {
-      particles.push({
-        x: canvas.width / 2,
-        y: canvas.height / 3,
-        r: Math.random() * 5 + 3,
-        color: colors[Math.floor(Math.random() * colors.length)],
-        vx: (Math.random() - 0.5) * 12,
-        vy: (Math.random() - 0.7) * 14,
-        gravity: 0.25,
-        alpha: 1,
-        rotation: Math.random() * 360,
-        vr: (Math.random() - 0.5) * 10
-      });
-    }
-
-    const render = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      let alive = false;
-
-      particles.forEach(p => {
-        p.vy += p.gravity;
-        p.x += p.vx;
-        p.y += p.vy;
-        p.rotation += p.vr;
-        p.alpha -= 0.008;
-
-        if (p.alpha > 0) {
-          alive = true;
-          ctx.save();
-          ctx.globalAlpha = Math.max(0, p.alpha);
-          ctx.translate(p.x, p.y);
-          ctx.rotate((p.rotation * Math.PI) / 180);
-          ctx.fillStyle = p.color;
-          ctx.fillRect(-p.r, -p.r, p.r * 2, p.r * 1.5);
-          ctx.restore();
-        }
-      });
-
-      if (alive) {
-        this.confettiAnimationId = requestAnimationFrame(render);
-      } else {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-      }
-    };
-
-    render();
-  }
-}
-
-function escapeHtml(str) {
-  if (!str) return '';
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
 }
 
 document.addEventListener('DOMContentLoaded', () => {
