@@ -58,14 +58,26 @@ export class LobbyUI {
   }
 
   renderClientLobbyPlayers(players) {
-    if (!this.dom.clientLobbyPlayersList) return;
+    if (!this.dom.clientLobbyPlayersList || !Array.isArray(players)) return;
     this.dom.clientLobbyPlayersList.innerHTML = '';
     players.forEach((p, idx) => {
+      const isMe = (p.id === this.app.myNetworkId);
       const row = document.createElement('div');
       row.className = 'lobby-player-pill';
+      if (isMe) {
+        row.style.borderColor = 'var(--color-accent)';
+      }
+
+      let roleBadge = 'READY ✅';
+      if (idx === 0) {
+        roleBadge = '👑 HOST';
+      } else if (isMe) {
+        roleBadge = 'KAMU ⭐';
+      }
+
       row.innerHTML = `
-        <span style="font-weight: 700;">${idx + 1}. ${escapeHtml(p.name)}</span>
-        <span class="lobby-player-role">${idx === 0 ? '👑 HOST' : 'TERHUBUNG'}</span>
+        <span style="font-weight: 700;">${idx + 1}. ${escapeHtml(p.name)} ${isMe && idx !== 0 ? '<small style="color:var(--color-accent)">(Kamu)</small>' : ''}</span>
+        <span class="lobby-player-role">${roleBadge}</span>
       `;
       this.dom.clientLobbyPlayersList.appendChild(row);
     });

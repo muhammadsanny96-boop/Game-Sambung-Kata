@@ -178,7 +178,7 @@
                 <span>💬 Kirim ke WhatsApp</span>
               </button>
               <button id="btn-copy-room-code" class="btn-copy-code" type="button">
-                <span>📋 Salin Link</span>
+                <span>📋 Salin Link & Kode</span>
               </button>
             </div>
           </div>
@@ -283,7 +283,7 @@
             <h3 class="card-title">Masukkan Info Room</h3>
             <p class="card-desc">Tanyakan Kode 4 Huruf kepada Host room kamu</p>
 
-            <form id="form-join-room" class="add-player-form" onsubmit="return false;" style="margin-top: 14px;">
+            <form id="form-join-room" class="add-player-form" style="margin-top: 14px;">
               <div style="margin-bottom: 12px;">
                 <label class="setting-label">Nama Kamu</label>
                 <input type="text" id="input-client-name" placeholder="Nama panggilan..." maxlength="16" class="btn-block" style="padding: 12px 14px; background: rgba(15, 23, 42, 0.8); border: 1.5px solid var(--bg-card-border); border-radius: var(--radius-md); color: var(--text-main); font-weight: 700; outline: none;">
@@ -291,7 +291,7 @@
               
               <div style="margin-bottom: 14px;">
                 <label class="setting-label">Kode Room (4 Karakter)</label>
-                <input type="text" id="input-client-room-code" placeholder="Contoh: A7K9" maxlength="6" class="btn-block" style="padding: 12px 14px; background: rgba(15, 23, 42, 0.8); border: 1.5px solid var(--bg-card-border); border-radius: var(--radius-md); color: var(--color-accent); font-family: var(--font-display); font-size: 1.6rem; font-weight: 900; letter-spacing: 0.25em; text-align: center; text-transform: uppercase; outline: none;">
+                <input type="text" id="input-client-room-code" placeholder="Contoh: A7K9" maxlength="6" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" class="btn-block" style="padding: 12px 14px; background: rgba(15, 23, 42, 0.8); border: 1.5px solid var(--bg-card-border); border-radius: var(--radius-md); color: var(--color-accent); font-family: var(--font-display); font-size: 1.6rem; font-weight: 900; letter-spacing: 0.25em; text-align: center; text-transform: uppercase; outline: none;">
               </div>
 
               <div id="client-join-error" class="form-feedback error-msg"></div>

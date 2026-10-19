@@ -36,6 +36,8 @@ export function bindEvents(app) {
 
   on(app.dom.btnBackMultiToHome, 'click', () => {
     app.audio.playClick();
+    app.network.disconnect();
+    app.gameSessionType = 'LOCAL';
     app.showScreen('home');
   });
 
@@ -203,19 +205,27 @@ export function bindEvents(app) {
   if (app.dom.btnChoiceJoinRoom) {
     app.dom.btnChoiceJoinRoom.addEventListener('click', () => {
       app.audio.playClick();
+      app.gameSessionType = 'NETWORK';
       app.showScreen('lobbyClient');
       if (app.dom.clientConnectBox) app.dom.clientConnectBox.classList.remove('hidden');
       if (app.dom.clientWaitingBox) app.dom.clientWaitingBox.classList.add('hidden');
+      if (app.dom.btnSubmitJoinRoom) app.dom.btnSubmitJoinRoom.disabled = false;
+      if (app.dom.clientJoinError) app.dom.clientJoinError.textContent = '';
+      setTimeout(() => {
+        if (app.dom.inputClientName) app.dom.inputClientName.focus();
+      }, 200);
     });
   }
 
   if (app.dom.btnCopyRoomCode) {
     app.dom.btnCopyRoomCode.addEventListener('click', () => {
       if (app.network.roomCode) {
-        navigator.clipboard.writeText(app.network.roomCode).then(() => {
-          app.showToast(`Kode "${app.network.roomCode}" berhasil disalin!`);
+        const code = app.network.roomCode;
+        const shareUrl = `${window.location.origin}${window.location.pathname}?room=${code}`;
+        navigator.clipboard.writeText(shareUrl).then(() => {
+          app.showToast(`Link & Kode "${code}" berhasil disalin!`);
         }).catch(() => {
-          app.showToast(`Kode Room: ${app.network.roomCode}`);
+          app.showToast(`Kode Room: ${code}`);
         });
       }
     });
@@ -261,6 +271,7 @@ export function bindEvents(app) {
     app.dom.btnLeaveHostRoom.addEventListener('click', () => {
       app.audio.playClick();
       app.network.disconnect();
+      app.gameSessionType = 'LOCAL';
       app.showScreen('home');
     });
   }
@@ -269,6 +280,7 @@ export function bindEvents(app) {
     app.dom.btnLeaveClientRoom.addEventListener('click', () => {
       app.audio.playClick();
       app.network.disconnect();
+      app.gameSessionType = 'LOCAL';
       app.showScreen('home');
     });
   }
@@ -317,6 +329,20 @@ export function bindEvents(app) {
   if (app.dom.btnHostStartGame) {
     app.dom.btnHostStartGame.addEventListener('click', () => {
       app.handleHostStartGame();
+    });
+  }
+
+  if (app.dom.inputClientRoomCode) {
+    app.dom.inputClientRoomCode.addEventListener('input', (e) => {
+      e.target.value = e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    });
+  }
+
+  if (app.dom.btnSubmitJoinRoom) {
+    app.dom.btnSubmitJoinRoom.addEventListener('click', (e) => {
+      e.preventDefault();
+      app.audio.playClick();
+      app.handleClientJoinRoom();
     });
   }
 

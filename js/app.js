@@ -328,6 +328,16 @@ class SambunginApp {
       this.showToast(`🚪 ${playerObj.name} keluar dari Room.`);
       this.renderHostLobbyPlayers();
       this.broadcastLobbyRoster();
+
+      // If game is in progress on Host, advance turn if leaving player was current turn
+      if (this.gameSessionType === 'NETWORK' && this.network.role === 'HOST' && this.engine && this.engine.state === 'PLAYING') {
+        const curPlayer = this.engine.getCurrentPlayer();
+        if (curPlayer && curPlayer.id === playerObj.id) {
+          this.showToast(`⚠️ Giliran dilewati karena ${playerObj.name} terputus.`);
+          curPlayer.status = 'ELIMINATED';
+          this.engine.prepareTurn();
+        }
+      }
     };
 
     this.network.onMessage = (type, payload, senderPeerId) => {
@@ -365,18 +375,33 @@ class SambunginApp {
       } else if (type === 'REACTION_EMOTE') {
         this.triggerFloatingEmote(payload.emoji);
         this.audio.playPop();
-        this.network.broadcast('REACTION_EMOTE', payload, senderPeerId);
+        this.network.broadcast('REACTION_EMOTE', payload);
       }
     }
 
     if (this.network.role === 'CLIENT') {
       switch (type) {
+        case 'JOIN_ACCEPTED':
+          if (payload && Array.isArray(payload.players)) {
+            this.renderClientLobbyPlayers(payload.players);
+          }
+          break;
+
+        case 'HOST_ROOM_CLOSED':
+          alert('Room telah ditutup oleh Host.');
+          this.network.disconnect();
+          this.gameSessionType = 'LOCAL';
+          this.showScreen('home');
+          break;
+
         case 'LOBBY_ROSTER_UPDATE':
-          this.renderClientLobbyPlayers(payload.players);
+          if (payload && Array.isArray(payload.players)) {
+            this.renderClientLobbyPlayers(payload.players);
+          }
           break;
 
         case 'REMOTE_GAME_START':
-          this.setupConfig = payload.config;
+          this.setupConfig = payload.config || this.setupConfig;
           this.clientUsedWords = new Set();
           this.showScreen('game');
           this.showToast('Game dimulai!');
@@ -421,8 +446,8 @@ class SambunginApp {
           break;
 
         case 'REMOTE_ARENA_SYNC':
-          if (this.dom.gameRequiredLetter) this.dom.gameRequiredLetter.textContent = payload.requiredLetter.toUpperCase();
-          if (this.dom.inputPrefixLetter) this.dom.inputPrefixLetter.textContent = payload.requiredLetter.toUpperCase();
+          if (this.dom.gameRequiredLetter) this.dom.gameRequiredLetter.textContent = (payload.requiredLetter || '').toUpperCase();
+          if (this.dom.inputPrefixLetter) this.dom.inputPrefixLetter.textContent = (payload.requiredLetter || '').toUpperCase();
           if (this.dom.lifelineCount) this.dom.lifelineCount.textContent = payload.lifelines;
           break;
 
@@ -446,10 +471,15 @@ class SambunginApp {
   }
 
   async handleCreateHostRoom() {
-    const hostName = prompt('Ketik nama kamu sebagai Host:', 'Host') || 'Host';
+    const defaultHostName = (this.players && this.players[0] && this.players[0].name) ? this.players[0].name : 'Host';
+    const hostName = prompt('Ketik nama kamu sebagai Host:', defaultHostName) || defaultHostName;
+    this.gameSessionType = 'NETWORK';
     this.showScreen('lobbyHost');
     if (this.dom.hostRoomCodeDisplay) this.dom.hostRoomCodeDisplay.textContent = '...';
-    if (this.dom.hostValidationMsg) this.dom.hostValidationMsg.textContent = 'Menghubungkan ke jaringan P2P...';
+    if (this.dom.hostValidationMsg) {
+      this.dom.hostValidationMsg.textContent = 'Menghubungkan ke jaringan P2P...';
+      this.dom.hostValidationMsg.style.color = 'var(--color-warning)';
+    }
 
     try {
       const code = await this.network.createRoom(hostName);
@@ -459,6 +489,7 @@ class SambunginApp {
       this.showToast(`Room aktif! Bagikan kode ${code} ke teman.`);
     } catch (err) {
       alert(`Gagal membuat room: ${err.message}`);
+      this.network.disconnect();
       this.showScreen('multiChoice');
     }
   }
@@ -475,6 +506,8 @@ class SambunginApp {
       alert('Minimal 2 pemain untuk memulai permainan!');
       return;
     }
+
+    this.network.isGameStarted = true;
 
     this.network.broadcast('REMOTE_GAME_START', {
       config: this.setupConfig,
@@ -494,7 +527,8 @@ class SambunginApp {
 
   async handleClientJoinRoom() {
     const name = this.dom.inputClientName ? this.dom.inputClientName.value.trim() : '';
-    const code = this.dom.inputClientRoomCode ? this.dom.inputClientRoomCode.value.trim().toUpperCase() : '';
+    const rawCode = this.dom.inputClientRoomCode ? this.dom.inputClientRoomCode.value.trim() : '';
+    const code = NetworkManager.sanitizeRoomCode(rawCode);
     if (this.dom.clientJoinError) this.dom.clientJoinError.textContent = '';
 
     if (!name) {
@@ -502,36 +536,50 @@ class SambunginApp {
       return;
     }
     if (!code || code.length < 3) {
-      if (this.dom.clientJoinError) this.dom.clientJoinError.textContent = 'Masukkan kode room 4 karakter!';
+      if (this.dom.clientJoinError) this.dom.clientJoinError.textContent = 'Masukkan kode room yang valid (3-4 karakter)!';
       return;
     }
 
     if (this.dom.btnSubmitJoinRoom) this.dom.btnSubmitJoinRoom.disabled = true;
     if (this.dom.clientJoinError) {
-      this.dom.clientJoinError.textContent = 'Menghubungkan ke Host...';
+      this.dom.clientJoinError.textContent = `Menghubungkan ke Room ${code}...`;
       this.dom.clientJoinError.style.color = 'var(--color-accent)';
     }
 
     try {
-      await this.network.joinRoom(code, name);
-      this.myNetworkId = this.network.myPeerId;
+      this.gameSessionType = 'NETWORK';
+      const joinData = await this.network.joinRoom(code, name);
+      this.myNetworkId = (joinData && joinData.assignedId) || this.network.myPeerId;
+
       if (this.dom.clientConnectBox) this.dom.clientConnectBox.classList.add('hidden');
       if (this.dom.clientWaitingBox) this.dom.clientWaitingBox.classList.remove('hidden');
       if (this.dom.clientRoomTitle) this.dom.clientRoomTitle.textContent = `Room: ${code}`;
+      if (this.dom.clientJoinError) this.dom.clientJoinError.textContent = '';
+
+      // Immediately render roster from joinData to eliminate race condition
+      if (joinData && Array.isArray(joinData.players)) {
+        this.renderClientLobbyPlayers(joinData.players);
+      }
+
       this.showToast(`Berhasil masuk ke Room ${code}!`);
     } catch (err) {
       if (this.dom.clientJoinError) {
         this.dom.clientJoinError.textContent = err.message || 'Gagal terhubung ke room.';
         this.dom.clientJoinError.style.color = 'var(--color-danger)';
       }
+    } finally {
       if (this.dom.btnSubmitJoinRoom) this.dom.btnSubmitJoinRoom.disabled = false;
     }
   }
 
   handleClientTurnStart(payload) {
     this.showScreen('game');
-    const { player, requiredLetter, prevWord, challenge, players } = payload;
+    const { player, requiredLetter, prevWord, challenge, players, remainingTime } = payload;
     this.currentTurnPlayer = player;
+
+    if (typeof remainingTime === 'number') {
+      this.updateTimerDisplay(remainingTime, 1);
+    }
 
     if (this.dom.gameActivePlayerName) this.dom.gameActivePlayerName.textContent = player.name;
 
